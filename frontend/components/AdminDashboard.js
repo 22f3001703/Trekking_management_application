@@ -1057,6 +1057,45 @@ const AdminDashboard = {
             if (st === 'Completed') return 'bg-info text-white';
             return 'bg-primary';
         },
+        userStatusBadge(st) {
+            if (st === 1) return 'bg-success';
+            if (st === 2) return 'bg-warning text-dark';
+            if (st === 0) return 'bg-danger';
+            return 'bg-secondary';
+        },
+        userStatusLabel(st) {
+            if (st === 1) return 'Active';
+            if (st === 2) return 'Deactivated';
+            if (st === 0) return 'Blacklisted';
+            return 'Unknown';
+        },
+        async changeUserStatus(user, newStatus) {
+            const statusNames = { 1: 'Activate', 2: 'Deactivate', 0: 'Blacklist' };
+            const actionText = statusNames[newStatus];
+            if (!confirm(`Are you sure you want to ${actionText.toLowerCase()} user "${user.name}"?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/users/${user.id}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    this.alertMessage = data.message;
+                    this.alertType = newStatus === 1 ? 'alert-success' : (newStatus === 2 ? 'alert-warning' : 'alert-danger');
+                    this.fetchUsers();
+                } else {
+                    alert(data.error || 'Failed to update user status.');
+                }
+            } catch (err) {
+                alert('Server error updating user status.');
+            }
+        },
         handleLogout() {
             localStorage.removeItem('user');
             this.$router.push('/login');
