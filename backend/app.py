@@ -22,11 +22,13 @@ from routes.Login import login_bp
 from routes.auth import auth_bp
 from routes.trek import trek_bp
 from routes.staff import staff_bp
+from routes.booking import booking_bp
 
 app.register_blueprint(login_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(trek_bp)
 app.register_blueprint(staff_bp)
+app.register_blueprint(booking_bp)
 
 # Import models so SQLAlchemy creates tables
 from models.models import User, Trek, Booking, StaffProfile
