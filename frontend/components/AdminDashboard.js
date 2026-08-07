@@ -2,7 +2,7 @@ const AdminDashboard = {
     template: `
     <div class="d-flex min-vh-100 bg-light">
         <!-- Sidebar -->
-        <div class="bg-dark text-white p-3 d-flex flex-column justify-content-between" style="width: 260px; min-height: 100vh;">
+        <div class="bg-dark text-white p-3 d-flex flex-column justify-content-between" style="width: 260px; min-width: 260px; max-width: 260px; flex-shrink: 0; min-height: 100vh;">
             <div>
                 <div class="d-flex align-items-center mb-4 px-2">
                     <i class="bi bi-compass text-primary fs-3 me-2"></i>
@@ -126,50 +126,134 @@ const AdminDashboard = {
                         </button>
                     </div>
 
-                    <!-- Trek List Table -->
-                    <div class="table-responsive" v-if="treks.length > 0">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Trek Name</th>
-                                    <th>Location</th>
-                                    <th>Difficulty</th>
-                                    <th>Duration</th>
-                                    <th>Slots</th>
-                                    <th>Price</th>
-                                    <th>Staff</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="t in treks" :key="t.id">
-                                    <td class="fw-semibold text-dark">{{ t.name }}</td>
-                                    <td><i class="bi bi-geo-alt text-danger me-1"></i>{{ t.location }}</td>
-                                    <td>
-                                        <span class="badge" :class="difficultyBadge(t.difficulty)">
-                                            {{ t.difficulty }}
-                                        </span>
-                                    </td>
-                                    <td>{{ t.duration_days }} Days</td>
-                                    <td>{{ t.available_slots }} slots</td>
-                                    <td>₹{{ t.price }}</td>
-                                    <td>
-                                        <span :class="['badge', t.assigned_staff_name && t.assigned_staff_name !== 'Unassigned' ? 'bg-secondary' : 'bg-danger']">
-                                            <i class="bi bi-person me-1"></i>{{ t.assigned_staff_name || 'Not allotted' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge" :class="statusBadge(t.status)">
-                                            {{ t.status }}
-                                        </span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <!-- Trek Card Grid -->
+                    <div class="row row-cols-1 row-cols-md-3 g-3" v-if="treks.length > 0">
+                        <div class="col" v-for="t in treks" :key="t.id">
+                            <div class="card h-100 shadow-sm border-0" style="overflow: hidden;">
+                                <!-- Trek Image -->
+                                <div class="position-relative overflow-hidden" style="height: 180px;">
+                                    <img
+                                        :src="t.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80'"
+                                        style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                                        alt="Trek image"
+                                        @error="$event.target.src='https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80'"
+                                    >
+                                    <!-- Badges over image -->
+                                    <div class="position-absolute top-0 start-0 m-2 d-flex gap-1">
+                                        <span class="badge" :class="difficultyBadge(t.difficulty)">{{ t.difficulty }}</span>
+                                    </div>
+                                    <div class="position-absolute top-0 end-0 m-2">
+                                        <span class="badge" :class="statusBadge(t.status)">{{ t.status }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="card-body d-flex flex-column pb-2">
+                                    <h6 class="card-title fw-bold text-dark mb-1 text-truncate">{{ t.name }}</h6>
+                                    <p class="text-muted small mb-2 text-truncate">
+                                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ t.location }}
+                                    </p>
+                                    <div class="d-flex flex-wrap gap-2 mb-3 small">
+                                        <span class="text-muted"><i class="bi bi-clock me-1"></i>{{ t.duration_days }} days</span>
+                                        <span class="text-muted"><i class="bi bi-people me-1"></i>{{ t.available_slots }} slots</span>
+                                        <span class="fw-semibold text-success"><i class="bi bi-currency-rupee"></i>{{ t.price }}</span>
+                                    </div>
+                                    <div class="mt-auto d-flex gap-2">
+                                        <button class="btn btn-outline-secondary btn-sm flex-grow-1" @click="openDetailModal(t)">
+                                            <i class="bi bi-eye me-1"></i> Details
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-sm" @click="openEditTrekModal(t)">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" @click="deleteTrekConfirm(t)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div v-else class="text-center py-5 text-muted border rounded">
-                        <i class="bi bi-compass fs-1 mb-2"></i>
+                        <i class="bi bi-compass fs-1 mb-2 d-block"></i>
                         <p class="mb-0">No treks added yet. Click <strong>"Add New Trek"</strong> to create one.</p>
+                    </div>
+
+                    <!-- Trek Detail Modal -->
+                    <div v-if="showDetailModal && detailTrek" class="modal d-block bg-dark bg-opacity-50" tabindex="-1">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content border-0 shadow">
+                                <div class="modal-header border-0 pb-0">
+                                    <button type="button" class="btn-close ms-auto" @click="showDetailModal = false"></button>
+                                </div>
+                                <div class="modal-body pt-0">
+                                    <img
+                                        :src="detailTrek.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80'"
+                                        class="img-fluid rounded mb-4"
+                                        style="width: 100%; height: 240px; object-fit: cover;"
+                                        alt="Trek image"
+                                        @error="$event.target.src='https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80'"
+                                    >
+                                    <div class="d-flex flex-wrap gap-2 mb-3">
+                                        <span class="badge fs-6" :class="difficultyBadge(detailTrek.difficulty)">{{ detailTrek.difficulty }}</span>
+                                        <span class="badge fs-6" :class="statusBadge(detailTrek.status)">{{ detailTrek.status }}</span>
+                                    </div>
+                                    <h4 class="fw-bold text-dark mb-1">{{ detailTrek.name }}</h4>
+                                    <p class="text-muted mb-3">
+                                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ detailTrek.location }}
+                                    </p>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-6 col-md-3">
+                                            <div class="text-center p-3 bg-light rounded">
+                                                <i class="bi bi-clock text-primary fs-4"></i>
+                                                <div class="fw-bold mt-1">{{ detailTrek.duration_days }}</div>
+                                                <div class="text-muted small">Days</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="text-center p-3 bg-light rounded">
+                                                <i class="bi bi-people text-success fs-4"></i>
+                                                <div class="fw-bold mt-1">{{ detailTrek.available_slots }}</div>
+                                                <div class="text-muted small">Slots</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="text-center p-3 bg-light rounded">
+                                                <i class="bi bi-currency-rupee text-warning fs-4"></i>
+                                                <div class="fw-bold mt-1">{{ detailTrek.price }}</div>
+                                                <div class="text-muted small">Price</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="text-center p-3 bg-light rounded">
+                                                <i class="bi bi-person-badge text-info fs-4"></i>
+                                                <div class="fw-bold mt-1 small text-truncate">{{ detailTrek.assigned_staff_name || 'N/A' }}</div>
+                                                <div class="text-muted small">Staff</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3" v-if="detailTrek.start_date || detailTrek.end_date">
+                                        <span class="text-muted small me-3" v-if="detailTrek.start_date">
+                                            <i class="bi bi-calendar-event me-1"></i>Start: {{ detailTrek.start_date }}
+                                        </span>
+                                        <span class="text-muted small" v-if="detailTrek.end_date">
+                                            <i class="bi bi-calendar-check me-1"></i>End: {{ detailTrek.end_date }}
+                                        </span>
+                                    </div>
+                                    <div v-if="detailTrek.description" class="border-top pt-3">
+                                        <h6 class="fw-semibold">About this Trek</h6>
+                                        <p class="text-muted">{{ detailTrek.description }}</p>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0">
+                                    <button class="btn btn-secondary btn-sm" @click="showDetailModal = false">Close</button>
+                                    <button class="btn btn-primary btn-sm" @click="openEditTrekModal(detailTrek); showDetailModal = false">
+                                        <i class="bi bi-pencil me-1"></i> Edit Trek
+                                    </button>
+                                    <button class="btn btn-danger btn-sm" @click="deleteTrekConfirm(detailTrek); showDetailModal = false">
+                                        <i class="bi bi-trash me-1"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Add Trek Modal Overlay -->
@@ -254,6 +338,96 @@ const AdminDashboard = {
                                             <button type="submit" class="btn btn-primary" :disabled="submitting">
                                                 <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>
                                                 {{ submitting ? 'Saving...' : 'Create Trek' }}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Trek Modal Overlay -->
+                    <div v-if="showEditModal" class="modal d-block bg-dark bg-opacity-50" tabindex="-1">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title fw-bold">Edit Trek Route</h5>
+                                    <button type="button" class="btn-close" @click="closeModal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div v-if="formError" class="alert alert-danger mb-3">
+                                        {{ formError }}
+                                    </div>
+                                    <form @submit.prevent="updateTrekSubmit">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Trek Name *</label>
+                                                <input type="text" class="form-control" v-model="editTrek.name" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Location *</label>
+                                                <input type="text" class="form-control" v-model="editTrek.location" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold">Difficulty</label>
+                                                <select class="form-select" v-model="editTrek.difficulty">
+                                                    <option value="Easy">Easy</option>
+                                                    <option value="Moderate">Moderate</option>
+                                                    <option value="Hard">Hard</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold">Duration (Days) *</label>
+                                                <input type="number" min="1" class="form-control" v-model="editTrek.duration_days" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold">Available Slots *</label>
+                                                <input type="number" min="0" class="form-control" v-model="editTrek.available_slots" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Price (₹)</label>
+                                                <input type="number" step="0.01" min="0" class="form-control" v-model="editTrek.price">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Assign Trek Staff</label>
+                                                <select class="form-select" v-model="editTrek.assigned_staff_id">
+                                                    <option value="">-- Select Staff (Unassigned) --</option>
+                                                    <option v-for="s in staffList" :key="s.id" :value="s.id">
+                                                        {{ s.name }} ({{ s.email }})
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Start Date</label>
+                                                <input type="date" class="form-control" v-model="editTrek.start_date">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">End Date</label>
+                                                <input type="date" class="form-control" v-model="editTrek.end_date">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Status</label>
+                                                <select class="form-select" v-model="editTrek.status">
+                                                    <option value="Open">Open</option>
+                                                    <option value="Pending">Pending</option>
+                                                    <option value="Approved">Approved</option>
+                                                    <option value="Closed">Closed</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Image URL (Optional)</label>
+                                                <input type="text" class="form-control" v-model="editTrek.image">
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label fw-semibold">Description</label>
+                                                <textarea class="form-control" rows="3" v-model="editTrek.description"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer px-0 pb-0 pt-3 mt-3 border-top">
+                                            <button type="button" class="btn btn-secondary" @click="closeModal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary" :disabled="submitting">
+                                                <span v-if="submitting" class="spinner-border spinner-border-sm me-1"></span>
+                                                {{ submitting ? 'Updating...' : 'Save Changes' }}
                                             </button>
                                         </div>
                                     </form>
@@ -464,6 +638,9 @@ const AdminDashboard = {
             staffList: [],
             fullStaffList: [],
             showAddModal: false,
+            showEditModal: false,
+            showDetailModal: false,
+            detailTrek: null,
             submitting: false,
             alertMessage: '',
             alertType: 'alert-success',
@@ -475,6 +652,21 @@ const AdminDashboard = {
                 duration_days: 3,
                 available_slots: 15,
                 price: 5000,
+                description: '',
+                image: '',
+                status: 'Open',
+                start_date: '',
+                end_date: '',
+                assigned_staff_id: ''
+            },
+            editTrek: {
+                id: null,
+                name: '',
+                location: '',
+                difficulty: 'Moderate',
+                duration_days: 1,
+                available_slots: 10,
+                price: 0,
                 description: '',
                 image: '',
                 status: 'Open',
@@ -574,6 +766,7 @@ const AdminDashboard = {
                     this.alertType = 'alert-success';
                     this.closeModal();
                     this.fetchTreks();
+                    this.fetchFullStaff();
                 } else {
                     this.formError = data.error || 'Failed to create trek.';
                 }
@@ -583,8 +776,83 @@ const AdminDashboard = {
                 this.submitting = false;
             }
         },
+        openDetailModal(t) {
+            this.detailTrek = t;
+            this.showDetailModal = true;
+        },
+        openEditTrekModal(t) {
+            this.editTrek = {
+                id: t.id,
+                name: t.name,
+                location: t.location,
+                difficulty: t.difficulty,
+                duration_days: t.duration_days,
+                available_slots: t.available_slots,
+                price: t.price,
+                description: t.description || '',
+                image: t.image || '',
+                status: t.status,
+                start_date: t.start_date || '',
+                end_date: t.end_date || '',
+                assigned_staff_id: t.assigned_staff_id || ''
+            };
+            this.showEditModal = true;
+        },
+        async updateTrekSubmit() {
+            this.submitting = true;
+            this.formError = '';
+
+            try {
+                const res = await fetch(`/api/treks/${this.editTrek.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.editTrek)
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    this.alertMessage = 'Trek updated successfully!';
+                    this.alertType = 'alert-success';
+                    this.closeModal();
+                    this.fetchTreks();
+                    this.fetchFullStaff();
+                } else {
+                    this.formError = data.error || 'Failed to update trek.';
+                }
+            } catch (err) {
+                this.formError = 'Server error. Please try again.';
+            } finally {
+                this.submitting = false;
+            }
+        },
+        async deleteTrekConfirm(t) {
+            if (!confirm(`Are you sure you want to delete trek "${t.name}"?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/treks/${t.id}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    this.alertMessage = data.message || 'Trek deleted successfully.';
+                    this.alertType = 'alert-warning';
+                    this.fetchTreks();
+                    this.fetchFullStaff();
+                } else {
+                    alert(data.error || 'Failed to delete trek.');
+                }
+            } catch (err) {
+                alert('Server error while deleting trek.');
+            }
+        },
         closeModal() {
             this.showAddModal = false;
+            this.showEditModal = false;
             this.formError = '';
             this.newTrek = {
                 name: '',
@@ -685,7 +953,6 @@ const AdminDashboard = {
                 if (res.ok) {
                     this.alertMessage = data.message || 'Staff member deleted.';
                     this.alertType = 'alert-warning';
-                    // Re-fetch staff AND treks immediately so deleted staff's treks show "Not allotted"
                     this.fetchFullStaff();
                     this.fetchStaffList();
                     this.fetchTreks();

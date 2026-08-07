@@ -2,7 +2,7 @@ const StaffDashboard = {
     template: `
     <div class="d-flex min-vh-100 bg-light">
         <!-- Sidebar -->
-        <div class="bg-dark text-white p-3 d-flex flex-column justify-content-between" style="width: 260px; min-height: 100vh;">
+        <div class="bg-dark text-white p-3 d-flex flex-column justify-content-between" style="width: 260px; min-width: 260px; max-width: 260px; flex-shrink: 0; min-height: 100vh;">
             <div>
                 <div class="d-flex align-items-center mb-4 px-2">
                     <i class="bi bi-compass text-primary fs-3 me-2"></i>
