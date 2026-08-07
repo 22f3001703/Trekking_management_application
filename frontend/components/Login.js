@@ -1,15 +1,27 @@
 const Login = {
     template: `
-    <div class="login-page d-flex align-items-center justify-content-center min-vh-100">
-        <div class="login-card card shadow-lg border-0">
-            <div class="card-body p-5">
-                <!-- Logo / Branding -->
+    <div class="auth-bg d-flex align-items-center justify-content-center">
+        <div class="card auth-card shadow border-0 my-5">
+            <div class="card-body p-4 p-md-5">
+                <!-- Branding -->
                 <div class="text-center mb-4">
-                    <div class="brand-icon mx-auto mb-3">
-                        <i class="bi bi-compass"></i>
+                    <h2 class="fw-bold text-primary mb-1">Trekking App</h2>
+                    <p class="text-muted">Sign in to your account</p>
+                </div>
+
+                <!-- Role Selection -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold text-dark">Select Role</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="role" id="roleTrekker" value="trekker" v-model="role" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="roleTrekker">Trekker</label>
+
+                        <input type="radio" class="btn-check" name="role" id="roleStaff" value="staff" v-model="role" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="roleStaff">Trek Staff</label>
+
+                        <input type="radio" class="btn-check" name="role" id="roleAdmin" value="admin" v-model="role" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="roleAdmin">Admin</label>
                     </div>
-                    <h2 class="fw-bold text-dark mb-1">Welcome Back</h2>
-                    <p class="text-muted">Sign in to Trekking Management</p>
                 </div>
 
                 <!-- Alert -->
@@ -22,38 +34,30 @@ const Login = {
                 <form @submit.prevent="handleLogin">
                     <div class="mb-3">
                         <label for="email" class="form-label fw-semibold">Email address</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-envelope"></i>
-                            </span>
-                            <input 
-                                type="email" 
-                                class="form-control border-start-0 ps-0" 
-                                id="email" 
-                                v-model="email" 
-                                placeholder="you@example.com"
-                                required
-                            >
-                        </div>
+                        <input 
+                            type="email" 
+                            class="form-control" 
+                            id="email" 
+                            v-model="email" 
+                            placeholder="name@example.com"
+                            required
+                        >
                     </div>
 
                     <div class="mb-4">
                         <label for="password" class="form-label fw-semibold">Password</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-lock"></i>
-                            </span>
                             <input 
                                 :type="showPassword ? 'text' : 'password'" 
-                                class="form-control border-start-0 border-end-0 ps-0" 
+                                class="form-control" 
                                 id="password" 
                                 v-model="password" 
-                                placeholder="Enter your password"
+                                placeholder="Enter password"
                                 required
                             >
-                            <span class="input-group-text bg-light border-start-0 cursor-pointer" @click="showPassword = !showPassword">
+                            <button class="btn btn-outline-secondary" type="button" @click="showPassword = !showPassword">
                                 <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
-                            </span>
+                            </button>
                         </div>
                     </div>
 
@@ -76,6 +80,7 @@ const Login = {
     `,
     data() {
         return {
+            role: 'trekker',
             email: '',
             password: '',
             showPassword: false,
@@ -92,18 +97,28 @@ const Login = {
                 const res = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: this.email, password: this.password })
+                    body: JSON.stringify({
+                        email: this.email,
+                        password: this.password,
+                        role: this.role
+                    })
                 });
 
                 const data = await res.json();
 
                 if (res.ok) {
-                    localStorage.setItem('token', data.token);
-                    // TODO: redirect based on role
-                    // this.$router.push('/dashboard');
-                    alert('Login successful!');
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Redirect based on user role
+                    if (data.user.role === 'admin') {
+                        this.$router.push('/admin/dashboard');
+                    } else if (data.user.role === 'staff') {
+                        this.$router.push('/staff/dashboard');
+                    } else {
+                        this.$router.push('/trekker/dashboard');
+                    }
                 } else {
-                    this.error = data.message || 'Invalid credentials. Please try again.';
+                    this.error = data.error || 'Invalid credentials. Please try again.';
                 }
             } catch (err) {
                 this.error = 'Something went wrong. Please try again later.';

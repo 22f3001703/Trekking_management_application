@@ -1,15 +1,12 @@
 const Signup = {
     template: `
-    <div class="login-page d-flex align-items-center justify-content-center min-vh-100">
-        <div class="login-card card shadow-lg border-0">
-            <div class="card-body p-5">
-                <!-- Logo / Branding -->
+    <div class="auth-bg d-flex align-items-center justify-content-center">
+        <div class="card auth-card shadow border-0 my-5">
+            <div class="card-body p-4 p-md-5">
+                <!-- Branding -->
                 <div class="text-center mb-4">
-                    <div class="brand-icon mx-auto mb-3">
-                        <i class="bi bi-person-plus"></i>
-                    </div>
-                    <h2 class="fw-bold text-dark mb-1">Create Account</h2>
-                    <p class="text-muted">Join Trekking Management as a Trekker</p>
+                    <h2 class="fw-bold text-primary mb-1">Create Account</h2>
+                    <p class="text-muted">Register as a Trekker</p>
                 </div>
 
                 <!-- Alert -->
@@ -25,77 +22,55 @@ const Signup = {
 
                 <!-- Signup Form -->
                 <form @submit.prevent="handleSignup">
-                    <!-- Full Name -->
                     <div class="mb-3">
                         <label for="name" class="form-label fw-semibold">Full Name</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-person"></i>
-                            </span>
-                            <input 
-                                type="text" 
-                                class="form-control border-start-0 ps-0" 
-                                id="name" 
-                                v-model="name" 
-                                placeholder="John Doe"
-                                required
-                            >
-                        </div>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="name" 
+                            v-model="name" 
+                            placeholder="John Doe"
+                            required
+                        >
                     </div>
 
-                    <!-- Email Address -->
                     <div class="mb-3">
                         <label for="email" class="form-label fw-semibold">Email address</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-envelope"></i>
-                            </span>
-                            <input 
-                                type="email" 
-                                class="form-control border-start-0 ps-0" 
-                                id="email" 
-                                v-model="email" 
-                                placeholder="you@example.com"
-                                required
-                            >
-                        </div>
+                        <input 
+                            type="email" 
+                            class="form-control" 
+                            id="email" 
+                            v-model="email" 
+                            placeholder="name@example.com"
+                            required
+                        >
                     </div>
 
-                    <!-- Phone Number -->
                     <div class="mb-3">
                         <label for="phone" class="form-label fw-semibold">Phone Number (Optional)</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-telephone"></i>
-                            </span>
-                            <input 
-                                type="tel" 
-                                class="form-control border-start-0 ps-0" 
-                                id="phone" 
-                                v-model="phone" 
-                                placeholder="+1234567890"
-                            >
-                        </div>
+                        <input 
+                            type="tel" 
+                            class="form-control" 
+                            id="phone" 
+                            v-model="phone" 
+                            placeholder="+1234567890"
+                        >
                     </div>
 
-                    <!-- Password -->
                     <div class="mb-4">
                         <label for="password" class="form-label fw-semibold">Password</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0">
-                                <i class="bi bi-lock"></i>
-                            </span>
                             <input 
                                 :type="showPassword ? 'text' : 'password'" 
-                                class="form-control border-start-0 border-end-0 ps-0" 
+                                class="form-control" 
                                 id="password" 
                                 v-model="password" 
                                 placeholder="Choose a password"
                                 required
                             >
-                            <span class="input-group-text bg-light border-start-0 cursor-pointer" @click="showPassword = !showPassword">
+                            <button class="btn btn-outline-secondary" type="button" @click="showPassword = !showPassword">
                                 <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
-                            </span>
+                            </button>
                         </div>
                     </div>
 
