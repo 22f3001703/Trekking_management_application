@@ -1,4 +1,5 @@
 import os
+from database import db
 from flask import Flask, render_template
 
 # Paths
@@ -11,15 +12,23 @@ app = Flask(
     static_folder=FRONTEND_DIR,
     static_url_path='/static'
 )
+app.debug=True
+app.config["SQLALCHEMY_DATABASE_URI"]= 'sqlite:///trekking.db'
+db.init_app(app)
+app.app_context().push()
+app.secret_key = "123456"
+
+from routes.Login import login_bp
+from routes.auth import auth_bp
+
+app.register_blueprint(login_bp)
+app.register_blueprint(auth_bp)
+
+# Import models so SQLAlchemy creates tables
+from models.models import User, Trek, Booking, StaffProfile
+with app.app_context():
+    db.create_all()
 
 
-# ---------- Serve the SPA entry point ----------
-@app.route('/')
-@app.route('/login')
-def serve_index():
-    return render_template('index.html')
-
-
-# ---------- Run ----------
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
