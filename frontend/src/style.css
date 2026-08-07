@@ -1,0 +1,110 @@
+/* ===== Global Styles ===== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --primary: #2d6a4f;
+    --primary-hover: #1b4332;
+    --accent: #52b788;
+    --bg-gradient-start: #d8f3dc;
+    --bg-gradient-end: #b7e4c7;
+    --card-bg: rgba(255, 255, 255, 0.95);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 50%, #95d5b2 100%);
+    min-height: 100vh;
+}
+
+/* ===== Login Page ===== */
+.login-page {
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(45, 106, 79, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(82, 183, 136, 0.08) 0%, transparent 50%);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 440px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    animation: slideUp 0.5s ease-out;
+}
+
+.brand-icon {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: white;
+}
+
+/* ===== Form Controls ===== */
+.form-control:focus,
+.input-group-text {
+    border-color: var(--accent);
+}
+
+.form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(82, 183, 136, 0.25);
+}
+
+.input-group-text {
+    color: #6c757d;
+}
+
+/* ===== Primary Button Override ===== */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--primary-hover), var(--primary));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(45, 106, 79, 0.3);
+}
+
+.btn-primary:disabled {
+    opacity: 0.7;
+}
+
+/* ===== Links ===== */
+a {
+    color: var(--primary);
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: var(--primary-hover);
+}
+
+/* ===== Utility ===== */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* ===== Animations ===== */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
