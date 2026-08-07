@@ -75,6 +75,8 @@ def get_users():
         u_dict = u.to_dict()
         u_dict['bookings_count'] = len(u.bookings) if u.bookings else 0
         result.append(u_dict)
+    return jsonify(result), 200
+
 
 # ---------- PUT /api/users/<int:user_id>/status ----------
 @auth_bp.route('/users/<int:user_id>/status', methods=['PUT'])
