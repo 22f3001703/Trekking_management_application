@@ -226,6 +226,64 @@ const StaffDashboard = {
                             </div>
                         </div>
 
+                        <!-- Status Update & Controls Card -->
+                        <div class="card border-0 bg-light p-3 mb-4 rounded shadow-sm">
+                            <div v-if="detailTrek.status === 'Completed'" class="alert alert-success d-flex align-items-center mb-3">
+                                <i class="bi bi-check-circle-fill fs-4 me-2"></i>
+                                <div>
+                                    <strong class="d-block">Trek Marked as Completed!</strong>
+                                    <small>This trip has been finished successfully.</small>
+                                </div>
+                            </div>
+
+                            <div v-if="statusAlert" class="alert alert-info alert-dismissible fade show py-2 px-3 mb-3 small" role="alert">
+                                <i class="bi bi-info-circle me-1"></i>{{ statusAlert }}
+                                <button type="button" class="btn-close py-2" @click="statusAlert = ''"></button>
+                            </div>
+
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <div>
+                                    <h6 class="fw-bold mb-1 text-dark">
+                                        Current Status: <span class="badge ms-1" :class="statusBadge(detailTrek.status)">{{ detailTrek.status }}</span>
+                                    </h6>
+                                    <small class="text-muted">Update trek operational status or mark complete.</small>
+                                </div>
+
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <!-- Dropdown + Update Button -->
+                                    <div class="input-group input-group-sm" style="width: auto;">
+                                        <select v-model="selectedStatus" class="form-select form-select-sm">
+                                            <option value="Open">Open</option>
+                                            <option value="Pending">Pending</option>
+                                            <option value="Approved">Approved</option>
+                                            <option value="In Progress">In Progress</option>
+                                            <option value="Closed">Closed</option>
+                                            <option value="Completed">Completed</option>
+                                        </select>
+                                        <button 
+                                            class="btn btn-primary btn-sm" 
+                                            @click="updateTrekStatus(selectedStatus)"
+                                            :disabled="updatingStatus"
+                                        >
+                                            <span v-if="updatingStatus" class="spinner-border spinner-border-sm me-1"></span>
+                                            <i v-else class="bi bi-save me-1"></i> Update Status
+                                        </button>
+                                    </div>
+
+                                    <!-- Individual Mark as Completed Button -->
+                                    <button 
+                                        class="btn btn-sm"
+                                        :class="detailTrek.status === 'Completed' ? 'btn-success disabled' : 'btn-outline-success'"
+                                        @click="updateTrekStatus('Completed')"
+                                        :disabled="updatingStatus || detailTrek.status === 'Completed'"
+                                    >
+                                        <i class="bi bi-check-circle-fill me-1"></i>
+                                        {{ detailTrek.status === 'Completed' ? 'Completed' : 'Mark as Completed' }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Quick Information Tiles -->
                         <h6 class="fw-bold mb-3 text-uppercase text-secondary small">Trip Details</h6>
                         <div class="row g-2 mb-4">
@@ -354,7 +412,10 @@ const StaffDashboard = {
             assignedTreks: [],
             loadingTreks: false,
             showDetailModal: false,
-            detailTrek: null
+            detailTrek: null,
+            selectedStatus: '',
+            updatingStatus: false,
+            statusAlert: ''
         }
     },
     computed: {
@@ -407,11 +468,40 @@ const StaffDashboard = {
         },
         openDetailModal(t) {
             this.detailTrek = t;
+            this.selectedStatus = t.status || 'Open';
+            this.statusAlert = '';
             this.showDetailModal = true;
         },
         closeDetailModal() {
             this.showDetailModal = false;
             this.detailTrek = null;
+            this.statusAlert = '';
+        },
+        async updateTrekStatus(newStatus) {
+            if (!this.detailTrek) return;
+            this.updatingStatus = true;
+            this.statusAlert = '';
+            try {
+                const res = await fetch(`/api/treks/${this.detailTrek.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    this.detailTrek.status = newStatus;
+                    this.selectedStatus = newStatus;
+                    this.statusAlert = `Trek status updated to "${newStatus}"!`;
+                    this.fetchAssignedTreks();
+                } else {
+                    alert(data.error || 'Failed to update status.');
+                }
+            } catch (err) {
+                alert('Server error updating status.');
+            } finally {
+                this.updatingStatus = false;
+            }
         },
         difficultyBadge(diff) {
             if (diff === 'Easy') return 'bg-success';
