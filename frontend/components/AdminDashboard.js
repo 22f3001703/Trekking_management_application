@@ -81,7 +81,7 @@ const AdminDashboard = {
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="card-subtitle mb-1 opacity-75">Total Users</h6>
-                                            <h3 class="card-title mb-0 fw-bold">0</h3>
+                                            <h3 class="card-title mb-0 fw-bold">{{ userList.length }}</h3>
                                         </div>
                                         <i class="bi bi-people fs-1 opacity-50"></i>
                                     </div>
@@ -592,8 +592,66 @@ const AdminDashboard = {
 
                 <!-- Users (Trekkers) Panel -->
                 <div v-else-if="activeTab === 'users'">
-                    <h5 class="fw-bold mb-3">Users & Trekkers</h5>
-                    <p class="text-muted">Manage registered users, view profiles, and update status.</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">Registered Trekkers & Users</h5>
+                        <button class="btn btn-outline-secondary btn-sm" @click="fetchUsers">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                        </button>
+                    </div>
+
+                    <!-- Users List Table -->
+                    <div class="table-responsive" v-if="userList.length > 0">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Role</th>
+                                    <th>Bookings</th>
+                                    <th>Joined Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(u, index) in userList" :key="u.id">
+                                    <td>{{ index + 1 }}</td>
+                                    <td class="fw-semibold text-dark">{{ u.name }}</td>
+                                    <td>{{ u.email }}</td>
+                                    <td>{{ u.phone || 'N/A' }}</td>
+                                    <td><span class="badge bg-info text-dark">{{ u.role }}</span></td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ u.bookings_count }} booking(s)</span>
+                                    </td>
+                                    <td>{{ u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A' }}</td>
+                                    <td>
+                                        <span :class="['badge', userStatusBadge(u.status)]">
+                                            {{ userStatusLabel(u.status) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button v-if="u.status !== 1" class="btn btn-outline-success btn-sm" @click="changeUserStatus(u, 1)" title="Activate User">
+                                                <i class="bi bi-check-lg me-1"></i>Activate
+                                            </button>
+                                            <button v-if="u.status !== 2" class="btn btn-outline-warning text-dark btn-sm" @click="changeUserStatus(u, 2)" title="Deactivate User">
+                                                <i class="bi bi-pause-fill me-1"></i>Deactivate
+                                            </button>
+                                            <button v-if="u.status !== 0" class="btn btn-outline-danger btn-sm" @click="changeUserStatus(u, 0)" title="Blacklist User">
+                                                <i class="bi bi-slash-circle me-1"></i>Blacklist
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div v-else class="text-center py-5 text-muted border rounded">
+                        <i class="bi bi-people fs-1 mb-2 d-block"></i>
+                        <p class="mb-0">No registered users/trekkers found.</p>
+                    </div>
                 </div>
 
                 <!-- Booking Panel -->
@@ -637,6 +695,7 @@ const AdminDashboard = {
             treks: [],
             staffList: [],
             fullStaffList: [],
+            userList: [],
             showAddModal: false,
             showEditModal: false,
             showDetailModal: false,
@@ -716,6 +775,7 @@ const AdminDashboard = {
         this.fetchTreks();
         this.fetchStaffList();
         this.fetchFullStaff();
+        this.fetchUsers();
     },
     methods: {
         async fetchTreks() {
@@ -746,6 +806,16 @@ const AdminDashboard = {
                 }
             } catch (err) {
                 console.error('Failed to fetch full staff:', err);
+            }
+        },
+        async fetchUsers() {
+            try {
+                const res = await fetch('/api/users');
+                if (res.ok) {
+                    this.userList = await res.json();
+                }
+            } catch (err) {
+                console.error('Failed to fetch users:', err);
             }
         },
         async submitTrek() {

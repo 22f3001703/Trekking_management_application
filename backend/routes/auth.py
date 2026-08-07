@@ -65,3 +65,35 @@ def login():
         'user': user.to_dict()
     }), 200
 
+
+# ---------- GET /api/users ----------
+@auth_bp.route('/users', methods=['GET'])
+def get_users():
+    users = User.query.filter(User.role.in_(['trekker', 'user'])).order_by(User.created_at.desc()).all()
+    result = []
+    for u in users:
+        u_dict = u.to_dict()
+        u_dict['bookings_count'] = len(u.bookings) if u.bookings else 0
+        result.append(u_dict)
+
+# ---------- PUT /api/users/<int:user_id>/status ----------
+@auth_bp.route('/users/<int:user_id>/status', methods=['PUT'])
+def update_user_status(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.get_json() or {}
+    new_status = data.get('status')
+
+    if new_status not in [0, 1, 2]:
+        return jsonify({'error': 'Invalid status. Expected 1 (Active), 2 (Deactivated), or 0 (Blacklisted)'}), 400
+
+    user.status = new_status
+    db.session.commit()
+
+    status_labels = {1: 'Active', 2: 'Deactivated', 0: 'Blacklisted'}
+    return jsonify({
+        'message': f'User status updated to {status_labels[new_status]}',
+        'user': user.to_dict()
+    }), 200
