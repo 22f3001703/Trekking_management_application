@@ -1,4 +1,4 @@
-const Login = {
+const Signup = {
     template: `
     <div class="login-page d-flex align-items-center justify-content-center min-vh-100">
         <div class="login-card card shadow-lg border-0">
@@ -6,10 +6,10 @@ const Login = {
                 <!-- Logo / Branding -->
                 <div class="text-center mb-4">
                     <div class="brand-icon mx-auto mb-3">
-                        <i class="bi bi-compass"></i>
+                        <i class="bi bi-person-plus"></i>
                     </div>
-                    <h2 class="fw-bold text-dark mb-1">Welcome Back</h2>
-                    <p class="text-muted">Sign in to Trekking Management</p>
+                    <h2 class="fw-bold text-dark mb-1">Create Account</h2>
+                    <p class="text-muted">Join Trekking Management as a Trekker</p>
                 </div>
 
                 <!-- Alert -->
@@ -18,8 +18,32 @@ const Login = {
                     <button type="button" class="btn-close" @click="error = ''"></button>
                 </div>
 
-                <!-- Login Form -->
-                <form @submit.prevent="handleLogin">
+                <div v-if="success" class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{ success }}
+                    <button type="button" class="btn-close" @click="success = ''"></button>
+                </div>
+
+                <!-- Signup Form -->
+                <form @submit.prevent="handleSignup">
+                    <!-- Full Name -->
+                    <div class="mb-3">
+                        <label for="name" class="form-label fw-semibold">Full Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="bi bi-person"></i>
+                            </span>
+                            <input 
+                                type="text" 
+                                class="form-control border-start-0 ps-0" 
+                                id="name" 
+                                v-model="name" 
+                                placeholder="John Doe"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Email Address -->
                     <div class="mb-3">
                         <label for="email" class="form-label fw-semibold">Email address</label>
                         <div class="input-group">
@@ -37,6 +61,24 @@ const Login = {
                         </div>
                     </div>
 
+                    <!-- Phone Number -->
+                    <div class="mb-3">
+                        <label for="phone" class="form-label fw-semibold">Phone Number (Optional)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="bi bi-telephone"></i>
+                            </span>
+                            <input 
+                                type="tel" 
+                                class="form-control border-start-0 ps-0" 
+                                id="phone" 
+                                v-model="phone" 
+                                placeholder="+1234567890"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Password -->
                     <div class="mb-4">
                         <label for="password" class="form-label fw-semibold">Password</label>
                         <div class="input-group">
@@ -48,7 +90,7 @@ const Login = {
                                 class="form-control border-start-0 border-end-0 ps-0" 
                                 id="password" 
                                 v-model="password" 
-                                placeholder="Enter your password"
+                                placeholder="Choose a password"
                                 required
                             >
                             <span class="input-group-text bg-light border-start-0 cursor-pointer" @click="showPassword = !showPassword">
@@ -59,15 +101,15 @@ const Login = {
 
                     <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold" :disabled="loading">
                         <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                        {{ loading ? 'Signing in...' : 'Sign In' }}
+                        {{ loading ? 'Creating Account...' : 'Sign Up' }}
                     </button>
                 </form>
 
-                <!-- Register Link -->
+                <!-- Login Link -->
                 <div class="text-center mt-4">
                     <p class="text-muted mb-0">
-                        Don't have an account? 
-                        <router-link to="/signup" class="text-decoration-none fw-semibold">Register here</router-link>
+                        Already have an account? 
+                        <router-link to="/login" class="text-decoration-none fw-semibold">Sign in</router-link>
                     </p>
                 </div>
             </div>
@@ -76,34 +118,43 @@ const Login = {
     `,
     data() {
         return {
+            name: '',
             email: '',
+            phone: '',
             password: '',
             showPassword: false,
             loading: false,
-            error: ''
+            error: '',
+            success: ''
         }
     },
     methods: {
-        async handleLogin() {
+        async handleSignup() {
             this.loading = true;
             this.error = '';
+            this.success = '';
 
             try {
-                const res = await fetch('/api/login', {
+                const res = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: this.email, password: this.password })
+                    body: JSON.stringify({
+                        name: this.name,
+                        email: this.email,
+                        password: this.password,
+                        phone: this.phone
+                    })
                 });
 
                 const data = await res.json();
 
                 if (res.ok) {
-                    localStorage.setItem('token', data.token);
-                    // TODO: redirect based on role
-                    // this.$router.push('/dashboard');
-                    alert('Login successful!');
+                    this.success = 'Account created successfully! Redirecting to login...';
+                    setTimeout(() => {
+                        this.$router.push('/login');
+                    }, 1500);
                 } else {
-                    this.error = data.message || 'Invalid credentials. Please try again.';
+                    this.error = data.error || 'Registration failed. Please try again.';
                 }
             } catch (err) {
                 this.error = 'Something went wrong. Please try again later.';
