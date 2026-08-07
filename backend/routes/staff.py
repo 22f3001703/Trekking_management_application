@@ -149,3 +149,35 @@ def delete_staff(staff_id):
     return jsonify({
         'message': f'Staff member deleted successfully. {len(assigned_treks)} assigned trek(s) set to Not Allotted.'
     }), 200
+
+
+# ---------- GET /api/staff/<int:staff_id>/treks ----------
+@staff_bp.route('/staff/<int:staff_id>/treks', methods=['GET'])
+def get_staff_treks(staff_id):
+    staff_user = User.query.filter_by(id=staff_id, role='staff').first()
+    if not staff_user:
+        return jsonify({'error': 'Staff member not found'}), 404
+
+    treks = Trek.query.filter_by(assigned_staff_id=staff_id).order_by(Trek.created_at.desc()).all()
+    result = []
+    for t in treks:
+        t_dict = t.to_dict()
+        participants = []
+        for b in t.bookings:
+            u = b.user
+            participants.append({
+                'booking_id': b.id,
+                'user_id': b.user_id,
+                'name': u.name if u else 'N/A',
+                'email': u.email if u else 'N/A',
+                'phone': u.phone if u else 'N/A',
+                'booking_date': b.booking_date.isoformat() if b.booking_date else 'N/A',
+                'status': b.status,
+                'payment_status': b.payment_status
+            })
+        t_dict['participants'] = participants
+        t_dict['participants_count'] = len(participants)
+        result.append(t_dict)
+
+    return jsonify(result), 200
+

@@ -457,6 +457,7 @@ const AdminDashboard = {
                                     <th>Specialization</th>
                                     <th>Experience</th>
                                     <th>Assigned Treks</th>
+                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -473,6 +474,22 @@ const AdminDashboard = {
                                         </span>
                                     </td>
                                     <td>
+                                        <span :class="['badge', userStatusBadge(s.status)]">
+                                            {{ userStatusLabel(s.status) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm me-1">
+                                            <button v-if="s.status !== 1" class="btn btn-outline-success btn-sm" @click="changeStaffStatus(s, 1)" title="Activate Staff">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                            <button v-if="s.status !== 2" class="btn btn-outline-warning text-dark btn-sm" @click="changeStaffStatus(s, 2)" title="Deactivate Staff">
+                                                <i class="bi bi-pause-fill"></i>
+                                            </button>
+                                            <button v-if="s.status !== 0" class="btn btn-outline-danger btn-sm" @click="changeStaffStatus(s, 0)" title="Blacklist Staff">
+                                                <i class="bi bi-slash-circle"></i>
+                                            </button>
+                                        </div>
                                         <button class="btn btn-sm btn-outline-primary me-1" @click="openEditStaffModal(s)">
                                             <i class="bi bi-pencil"></i> Edit
                                         </button>
@@ -1094,6 +1111,34 @@ const AdminDashboard = {
                 }
             } catch (err) {
                 alert('Server error updating user status.');
+            }
+        },
+        async changeStaffStatus(staffMember, newStatus) {
+            const statusNames = { 1: 'Activate', 2: 'Deactivate', 0: 'Blacklist' };
+            const actionText = statusNames[newStatus];
+            if (!confirm(`Are you sure you want to ${actionText.toLowerCase()} staff member "${staffMember.name}"?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/users/${staffMember.id}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    this.alertMessage = data.message;
+                    this.alertType = newStatus === 1 ? 'alert-success' : (newStatus === 2 ? 'alert-warning' : 'alert-danger');
+                    this.fetchFullStaff();
+                    this.fetchStaffList();
+                } else {
+                    alert(data.error || 'Failed to update staff status.');
+                }
+            } catch (err) {
+                alert('Server error updating staff status.');
             }
         },
         handleLogout() {

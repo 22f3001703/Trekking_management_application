@@ -62,7 +62,7 @@ const StaffDashboard = {
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="card-subtitle mb-1 opacity-75">Assigned Treks</h6>
-                                            <h3 class="card-title mb-0 fw-bold">0</h3>
+                                            <h3 class="card-title mb-0 fw-bold">{{ assignedTreks.length }}</h3>
                                         </div>
                                         <i class="bi bi-compass fs-1 opacity-50"></i>
                                     </div>
@@ -75,7 +75,7 @@ const StaffDashboard = {
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="card-subtitle mb-1 opacity-75">Registered Participants</h6>
-                                            <h3 class="card-title mb-0 fw-bold">0</h3>
+                                            <h3 class="card-title mb-0 fw-bold">{{ totalParticipantsCount }}</h3>
                                         </div>
                                         <i class="bi bi-people fs-1 opacity-50"></i>
                                     </div>
@@ -87,14 +87,254 @@ const StaffDashboard = {
 
                 <!-- My Treks Panel -->
                 <div v-else-if="activeTab === 'my-treks'">
-                    <h5 class="fw-bold mb-3">Assigned Treks</h5>
-                    <p class="text-muted">View and update slots or status for assigned treks.</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0">My Allotted Treks</h5>
+                            <small class="text-muted">Treks currently assigned to you for management</small>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" @click="fetchAssignedTreks">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                        </button>
+                    </div>
+
+                    <div v-if="loadingTreks" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-muted mt-2 small">Loading your allotted treks...</p>
+                    </div>
+
+                    <!-- Treks Photo / Card Grid -->
+                    <div class="row row-cols-1 row-cols-md-3 g-3" v-else-if="assignedTreks.length > 0">
+                        <div class="col" v-for="t in assignedTreks" :key="t.id">
+                            <div class="card h-100 shadow-sm border-0" style="overflow: hidden; cursor: pointer;" @click="openDetailModal(t)">
+                                <!-- Trek Image -->
+                                <div class="position-relative overflow-hidden" style="height: 190px;">
+                                    <img
+                                        :src="t.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80'"
+                                        style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                                        alt="Trek photo"
+                                        @error="$event.target.src='https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80'"
+                                    >
+                                    <!-- Badges -->
+                                    <div class="position-absolute top-0 start-0 m-2">
+                                        <span class="badge" :class="difficultyBadge(t.difficulty)">{{ t.difficulty }}</span>
+                                    </div>
+                                    <div class="position-absolute top-0 end-0 m-2">
+                                        <span class="badge" :class="statusBadge(t.status)">{{ t.status }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="card-body d-flex flex-column pb-2">
+                                    <h6 class="card-title fw-bold text-dark mb-1 text-truncate">{{ t.name }}</h6>
+                                    <p class="text-muted small mb-2 text-truncate">
+                                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ t.location }}
+                                    </p>
+                                    <div class="d-flex flex-wrap gap-2 mb-3 small">
+                                        <span class="text-muted"><i class="bi bi-clock me-1"></i>{{ t.duration_days }} days</span>
+                                        <span class="text-muted"><i class="bi bi-people me-1"></i>{{ t.available_slots }} slots</span>
+                                        <span class="fw-semibold text-primary"><i class="bi bi-person-check me-1"></i>{{ t.participants_count }} booked</span>
+                                    </div>
+                                    <div class="mt-auto">
+                                        <button class="btn btn-outline-primary btn-sm w-100" @click.stop="openDetailModal(t)">
+                                            <i class="bi bi-eye me-1"></i> View Details & Participants
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-center py-5 text-muted border rounded">
+                        <i class="bi bi-compass fs-1 mb-2 d-block text-secondary"></i>
+                        <h6 class="fw-bold mb-1">No Treks Allotted</h6>
+                        <p class="mb-0 text-muted small">You currently have no trekking trips assigned by the admin.</p>
+                    </div>
                 </div>
 
                 <!-- Participants Panel -->
                 <div v-else-if="activeTab === 'participants'">
-                    <h5 class="fw-bold mb-3">Trek Participants</h5>
-                    <p class="text-muted">View participant list and mark trek completion status.</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0">All Trek Participants</h5>
+                            <small class="text-muted">Participants registered for your assigned treks</small>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" @click="fetchAssignedTreks">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle border">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Trek Name</th>
+                                    <th>Participant Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Booking Date</th>
+                                    <th>Status</th>
+                                    <th>Payment</th>
+                                </tr>
+                            </thead>
+                            <tbody v-if="allParticipants.length > 0">
+                                <tr v-for="(p, index) in allParticipants" :key="p.booking_id + '-' + index">
+                                    <td>{{ index + 1 }}</td>
+                                    <td class="fw-semibold text-primary">{{ p.trek_name }}</td>
+                                    <td class="fw-semibold text-dark">{{ p.name }}</td>
+                                    <td>{{ p.email }}</td>
+                                    <td>{{ p.phone || 'N/A' }}</td>
+                                    <td>{{ p.booking_date ? new Date(p.booking_date).toLocaleDateString() : 'N/A' }}</td>
+                                    <td><span class="badge bg-success">{{ p.status }}</span></td>
+                                    <td><span class="badge bg-info text-white">{{ p.payment_status }}</span></td>
+                                </tr>
+                            </tbody>
+                            <tbody v-else>
+                                <tr>
+                                    <td colspan="8" class="py-4 text-center text-muted">
+                                        <i class="bi bi-people fs-3 d-block mb-1 opacity-50"></i>
+                                        No participants registered for any of your assigned treks yet.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail & Participants Modal -->
+        <div v-if="showDetailModal && detailTrek" class="modal d-block bg-dark bg-opacity-50" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-compass text-primary me-2"></i>{{ detailTrek.name }}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" @click="closeDetailModal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <!-- Hero Image -->
+                        <div class="position-relative rounded overflow-hidden mb-4" style="height: 220px;">
+                            <img
+                                :src="detailTrek.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80'"
+                                style="width: 100%; height: 100%; object-fit: cover;"
+                                alt="Trek detail image"
+                            >
+                            <div class="position-absolute top-0 start-0 m-3 d-flex gap-2">
+                                <span class="badge fs-6" :class="difficultyBadge(detailTrek.difficulty)">{{ detailTrek.difficulty }}</span>
+                                <span class="badge fs-6" :class="statusBadge(detailTrek.status)">{{ detailTrek.status }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Quick Information Tiles -->
+                        <h6 class="fw-bold mb-3 text-uppercase text-secondary small">Trip Details</h6>
+                        <div class="row g-2 mb-4">
+                            <div class="col-md-3 col-6">
+                                <div class="p-3 bg-light rounded text-center border">
+                                    <div class="text-muted small">Location</div>
+                                    <div class="fw-bold text-truncate" :title="detailTrek.location">{{ detailTrek.location }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <div class="p-3 bg-light rounded text-center border">
+                                    <div class="text-muted small">Duration</div>
+                                    <div class="fw-bold">{{ detailTrek.duration_days }} Days</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <div class="p-3 bg-light rounded text-center border">
+                                    <div class="text-muted small">Price</div>
+                                    <div class="fw-bold text-success">₹{{ detailTrek.price }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <div class="p-3 bg-light rounded text-center border">
+                                    <div class="text-muted small">Available Slots</div>
+                                    <div class="fw-bold">{{ detailTrek.available_slots }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dates & Description -->
+                        <div class="row mb-4" v-if="detailTrek.start_date || detailTrek.end_date">
+                            <div class="col-md-6" v-if="detailTrek.start_date">
+                                <small class="text-muted d-block">Start Date</small>
+                                <strong class="text-dark">{{ new Date(detailTrek.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}</strong>
+                            </div>
+                            <div class="col-md-6" v-if="detailTrek.end_date">
+                                <small class="text-muted d-block">End Date</small>
+                                <strong class="text-dark">{{ new Date(detailTrek.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}</strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-4" v-if="detailTrek.description">
+                            <h6 class="fw-bold mb-2 text-uppercase text-secondary small">Description</h6>
+                            <p class="text-muted bg-light p-3 rounded border mb-0 small" style="white-space: pre-line;">{{ detailTrek.description }}</p>
+                        </div>
+
+                        <!-- Participants Section -->
+                        <hr class="my-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0 text-uppercase text-secondary small">
+                                <i class="bi bi-people-fill text-primary me-1"></i> Participants Registered ({{ detailTrek.participants_count }})
+                            </h6>
+                        </div>
+
+                        <!-- Participants Table -->
+                        <div class="table-responsive" v-if="detailTrek.participants && detailTrek.participants.length > 0">
+                            <table class="table table-hover align-middle border mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Booking Date</th>
+                                        <th>Status</th>
+                                        <th>Payment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(p, index) in detailTrek.participants" :key="p.booking_id">
+                                        <td>{{ index + 1 }}</td>
+                                        <td class="fw-semibold text-dark">{{ p.name }}</td>
+                                        <td>{{ p.email }}</td>
+                                        <td>{{ p.phone || 'N/A' }}</td>
+                                        <td>{{ p.booking_date ? new Date(p.booking_date).toLocaleDateString() : 'N/A' }}</td>
+                                        <td><span class="badge bg-success">{{ p.status }}</span></td>
+                                        <td><span class="badge bg-info text-white">{{ p.payment_status }}</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Empty Participants State -->
+                        <div v-else class="table-responsive">
+                            <table class="table align-middle border text-center mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Booking Date</th>
+                                        <th>Status</th>
+                                        <th>Payment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="7" class="py-4 text-muted">
+                                            <i class="bi bi-inbox fs-3 d-block mb-1 opacity-50"></i>
+                                            No participants registered for this trek yet.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary btn-sm" @click="closeDetailModal">Close</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -104,18 +344,35 @@ const StaffDashboard = {
         return {
             activeTab: 'dashboard',
             userName: 'Staff',
+            userId: null,
             currentDate: new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }),
             navItems: [
                 { id: 'dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },
                 { id: 'my-treks', label: 'My Treks', icon: 'bi bi-compass' },
                 { id: 'participants', label: 'Participants', icon: 'bi bi-people' }
-            ]
+            ],
+            assignedTreks: [],
+            loadingTreks: false,
+            showDetailModal: false,
+            detailTrek: null
         }
     },
     computed: {
         activeTabLabel() {
             const item = this.navItems.find(n => n.id === this.activeTab);
             return item ? item.label : 'Dashboard';
+        },
+        totalParticipantsCount() {
+            return this.assignedTreks.reduce((sum, t) => sum + (t.participants_count || 0), 0);
+        },
+        allParticipants() {
+            const list = [];
+            this.assignedTreks.forEach(t => {
+                (t.participants || []).forEach(p => {
+                    list.push({ ...p, trek_name: t.name, trek_location: t.location });
+                });
+            });
+            return list;
         }
     },
     mounted() {
@@ -124,12 +381,49 @@ const StaffDashboard = {
             try {
                 const user = JSON.parse(storedUser);
                 this.userName = user.name || 'Staff';
+                this.userId = user.id;
+                if (this.userId) {
+                    this.fetchAssignedTreks();
+                }
             } catch (e) {
-                console.error(e);
+                console.error('Failed to parse stored user:', e);
             }
         }
     },
     methods: {
+        async fetchAssignedTreks() {
+            if (!this.userId) return;
+            this.loadingTreks = true;
+            try {
+                const res = await fetch(`/api/staff/${this.userId}/treks`);
+                if (res.ok) {
+                    this.assignedTreks = await res.json();
+                }
+            } catch (err) {
+                console.error('Failed to fetch assigned treks:', err);
+            } finally {
+                this.loadingTreks = false;
+            }
+        },
+        openDetailModal(t) {
+            this.detailTrek = t;
+            this.showDetailModal = true;
+        },
+        closeDetailModal() {
+            this.showDetailModal = false;
+            this.detailTrek = null;
+        },
+        difficultyBadge(diff) {
+            if (diff === 'Easy') return 'bg-success';
+            if (diff === 'Hard') return 'bg-danger';
+            return 'bg-warning text-dark';
+        },
+        statusBadge(st) {
+            if (st === 'Open') return 'bg-success';
+            if (st === 'Closed') return 'bg-secondary';
+            if (st === 'Completed') return 'bg-info text-white';
+            return 'bg-primary';
+        },
         handleLogout() {
             localStorage.removeItem('user');
             this.$router.push('/login');
