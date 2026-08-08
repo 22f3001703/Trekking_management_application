@@ -218,6 +218,13 @@ const TrekkerDashboard = {
                                                 <i class="bi bi-check-circle me-1"></i> Booked
                                             </button>
                                             <button 
+                                                v-else-if="t.status !== 'Open'" 
+                                                class="btn btn-secondary btn-sm disabled" 
+                                                disabled
+                                            >
+                                                <i class="bi bi-lock me-1"></i> {{ t.status === 'Closed' ? 'Closed' : 'Not Open' }}
+                                            </button>
+                                            <button 
                                                 v-else-if="t.available_slots <= 0" 
                                                 class="btn btn-secondary btn-sm disabled" 
                                                 disabled
@@ -285,7 +292,7 @@ const TrekkerDashboard = {
                                     <td class="fw-semibold text-success">₹{{ b.price }}</td>
                                     <td>{{ b.booking_date ? new Date(b.booking_date).toLocaleDateString() : 'N/A' }}</td>
                                     <td>
-                                        <span class="badge" :class="b.status === 'Booked' ? 'bg-success' : 'bg-secondary'">
+                                        <span class="badge" :class="bookingStatusBadge(b.status)">
                                             {{ b.status }}
                                         </span>
                                     </td>
@@ -322,8 +329,11 @@ const TrekkerDashboard = {
                                     <th>#</th>
                                     <th>Trek</th>
                                     <th>Location</th>
+                                    <th>Difficulty</th>
+                                    <th>Duration</th>
                                     <th>Price</th>
-                                    <th>Date</th>
+                                    <th>Trek Dates</th>
+                                    <th>Booked On</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -332,7 +342,15 @@ const TrekkerDashboard = {
                                     <td>{{ index + 1 }}</td>
                                     <td class="fw-semibold text-dark">{{ b.trek_name }}</td>
                                     <td>{{ b.location }}</td>
+                                    <td><span class="badge" :class="difficultyBadge(b.difficulty)">{{ b.difficulty }}</span></td>
+                                    <td>{{ b.duration_days }} days</td>
                                     <td class="fw-semibold text-success">₹{{ b.price }}</td>
+                                    <td>
+                                        <span v-if="b.start_date">{{ new Date(b.start_date).toLocaleDateString() }}</span>
+                                        <span v-if="b.start_date && b.end_date"> - </span>
+                                        <span v-if="b.end_date">{{ new Date(b.end_date).toLocaleDateString() }}</span>
+                                        <span v-if="!b.start_date && !b.end_date" class="text-muted">N/A</span>
+                                    </td>
                                     <td>{{ b.booking_date ? new Date(b.booking_date).toLocaleDateString() : 'N/A' }}</td>
                                     <td><span class="badge bg-info text-white">Completed</span></td>
                                 </tr>
@@ -448,6 +466,13 @@ const TrekkerDashboard = {
                             <i class="bi bi-check-circle me-1"></i> Already Booked
                         </button>
                         <button 
+                            v-else-if="detailTrek.status !== 'Open'" 
+                            class="btn btn-secondary disabled" 
+                            disabled
+                        >
+                            <i class="bi bi-lock me-1"></i> {{ detailTrek.status === 'Closed' ? 'Booking Closed' : 'Trek Not Open' }}
+                        </button>
+                        <button 
                             v-else-if="detailTrek.available_slots <= 0" 
                             class="btn btn-secondary disabled" 
                             disabled
@@ -462,6 +487,38 @@ const TrekkerDashboard = {
                         >
                             <span v-if="bookingInProgress === detailTrek.id" class="spinner-border spinner-border-sm me-1"></span>
                             <i v-else class="bi bi-ticket-perforated me-1"></i> Book This Trek Now (₹{{ detailTrek.price }})
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Red Pop-up Modal -->
+        <div v-if="showErrorModal" class="modal d-block bg-dark bg-opacity-50" tabindex="-1" style="z-index: 1070;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title fw-bold d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i> Booking Conflict / Error
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" @click="showErrorModal = false"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-danger flex-shrink-0">
+                                <i class="bi bi-x-circle-fill display-6"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-2">Unable to Complete Request</h6>
+                                <p class="text-secondary mb-0 small" style="line-height: 1.5;">
+                                    {{ errorMessage }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-top-0">
+                        <button type="button" class="btn btn-danger btn-sm px-4 fw-semibold" @click="showErrorModal = false">
+                            <i class="bi bi-x-lg me-1"></i> Close
                         </button>
                     </div>
                 </div>
@@ -493,7 +550,9 @@ const TrekkerDashboard = {
             detailTrek: null,
             bookingInProgress: null,
             alertMessage: '',
-            alertType: 'alert-success'
+            alertType: 'alert-success',
+            showErrorModal: false,
+            errorMessage: ''
         }
     },
     computed: {
@@ -578,7 +637,8 @@ const TrekkerDashboard = {
         },
         async bookTrek(trek) {
             if (!this.userId) {
-                alert('Please log in to book a trek.');
+                this.errorMessage = 'Please log in to book a trek.';
+                this.showErrorModal = true;
                 return;
             }
             this.bookingInProgress = trek.id;
@@ -604,12 +664,12 @@ const TrekkerDashboard = {
                         this.closeDetailModal();
                     }
                 } else {
-                    this.alertMessage = data.error || 'Failed to book trek.';
-                    this.alertType = 'alert-danger';
+                    this.errorMessage = data.error || 'Failed to book trek.';
+                    this.showErrorModal = true;
                 }
             } catch (err) {
-                this.alertMessage = 'Server error processing booking.';
-                this.alertType = 'alert-danger';
+                this.errorMessage = 'Server error processing booking.';
+                this.showErrorModal = true;
             } finally {
                 this.bookingInProgress = null;
             }
@@ -631,10 +691,12 @@ const TrekkerDashboard = {
                     this.fetchTreks();
                     this.fetchUserBookings();
                 } else {
-                    alert(data.error || 'Failed to cancel booking.');
+                    this.errorMessage = data.error || 'Failed to cancel booking.';
+                    this.showErrorModal = true;
                 }
             } catch (err) {
-                alert('Server error cancelling booking.');
+                this.errorMessage = 'Server error cancelling booking.';
+                this.showErrorModal = true;
             }
         },
         difficultyBadge(diff) {
@@ -647,6 +709,12 @@ const TrekkerDashboard = {
             if (st === 'Closed') return 'bg-secondary';
             if (st === 'Completed') return 'bg-info text-white';
             return 'bg-primary';
+        },
+        bookingStatusBadge(st) {
+            if (st === 'Booked') return 'bg-success';
+            if (st === 'Cancelled') return 'bg-danger';
+            if (st === 'Completed') return 'bg-info text-white';
+            return 'bg-secondary';
         },
         handleLogout() {
             localStorage.removeItem('user');

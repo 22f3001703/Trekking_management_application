@@ -102,12 +102,12 @@ const AdminDashboard = {
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="card bg-info text-white border-0 shadow-sm">
+                            <div class="card bg-info text-white border-0 shadow-sm" style="cursor: pointer;" @click="activeTab = 'booking'">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="card-subtitle mb-1 opacity-75">Total Bookings</h6>
-                                            <h3 class="card-title mb-0 fw-bold">0</h3>
+                                            <h3 class="card-title mb-0 fw-bold">{{ allBookings.length }}</h3>
                                         </div>
                                         <i class="bi bi-journal-check fs-1 opacity-50"></i>
                                     </div>
@@ -673,8 +673,198 @@ const AdminDashboard = {
 
                 <!-- Booking Panel -->
                 <div v-else-if="activeTab === 'booking'">
-                    <h5 class="fw-bold mb-3">All Trek Bookings</h5>
-                    <p class="text-muted">View and manage all participant trek bookings.</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0">All Trek Bookings</h5>
+                            <small class="text-muted">View and manage all participant trek bookings</small>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" @click="fetchAllBookings">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                        </button>
+                    </div>
+
+                    <!-- Search and Filters -->
+                    <div class="row g-2 mb-4 bg-light p-3 rounded border">
+                        <div class="col-md-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input 
+                                    type="text" 
+                                    v-model="bookingSearch" 
+                                    class="form-control" 
+                                    placeholder="Search by user name, email, or trek name..."
+                                >
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select v-model="bookingStatusFilter" class="form-select form-select-sm">
+                                <option value="">All Statuses</option>
+                                <option value="Booked">Booked</option>
+                                <option value="Cancelled">Cancelled</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <span class="badge bg-secondary">{{ filteredBookings.length }} booking(s)</span>
+                        </div>
+                    </div>
+
+                    <!-- Bookings Table -->
+                    <div class="table-responsive" v-if="filteredBookings.length > 0">
+                        <table class="table table-hover align-middle border">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Trek</th>
+                                    <th>Location</th>
+                                    <th>Booking Date</th>
+                                    <th>Status</th>
+                                    <th>Payment</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(b, index) in filteredBookings" :key="b.id" style="cursor: pointer;" @click="openBookingDetailModal(b)">
+                                    <td>{{ index + 1 }}</td>
+                                    <td class="fw-semibold text-dark">{{ b.user_name }}</td>
+                                    <td class="small">{{ b.user_email }}</td>
+                                    <td class="fw-semibold text-primary">{{ b.trek_name }}</td>
+                                    <td class="small">{{ b.location }}</td>
+                                    <td>{{ b.booking_date ? new Date(b.booking_date).toLocaleDateString() : 'N/A' }}</td>
+                                    <td>
+                                        <span class="badge" :class="bookingStatusBadge(b.status)">{{ b.status }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge" :class="b.payment_status === 'Completed' ? 'bg-success' : 'bg-warning text-dark'">{{ b.payment_status }}</span>
+                                    </td>
+                                    <td @click.stop>
+                                        <div class="btn-group btn-group-sm">
+                                            <button 
+                                                v-if="b.status === 'Booked'" 
+                                                class="btn btn-outline-info btn-sm" 
+                                                @click="updateBookingStatusAdmin(b, 'Completed')" 
+                                                title="Mark Completed"
+                                            >
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                            <button 
+                                                v-if="b.status === 'Booked'" 
+                                                class="btn btn-outline-danger btn-sm" 
+                                                @click="cancelBookingAdmin(b)" 
+                                                title="Cancel Booking"
+                                            >
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                            <button 
+                                                v-if="b.status === 'Cancelled'" 
+                                                class="btn btn-outline-success btn-sm" 
+                                                @click="updateBookingStatusAdmin(b, 'Booked')" 
+                                                title="Re-activate Booking"
+                                            >
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div v-else class="text-center py-5 text-muted border rounded">
+                        <i class="bi bi-journal-check fs-1 mb-2 d-block text-secondary"></i>
+                        <h6 class="fw-bold mb-1">No Bookings Found</h6>
+                        <p class="mb-0 text-muted small">No bookings match your search criteria.</p>
+                    </div>
+
+                    <!-- Booking Detail Modal -->
+                    <div v-if="showBookingDetailModal && bookingDetail" class="modal d-block bg-dark bg-opacity-50" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow">
+                                <div class="modal-header bg-dark text-white">
+                                    <h5 class="modal-title fw-bold">
+                                        <i class="bi bi-journal-check text-info me-2"></i>Booking #{{ bookingDetail.id }}
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" @click="showBookingDetailModal = false"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-6">
+                                            <div class="p-3 bg-light rounded border">
+                                                <div class="text-muted small">User</div>
+                                                <div class="fw-bold">{{ bookingDetail.user_name }}</div>
+                                                <div class="small text-muted">{{ bookingDetail.user_email }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="p-3 bg-light rounded border">
+                                                <div class="text-muted small">Trek</div>
+                                                <div class="fw-bold">{{ bookingDetail.trek_name }}</div>
+                                                <div class="small text-muted">{{ bookingDetail.location }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-4">
+                                            <div class="p-3 bg-light rounded border text-center">
+                                                <div class="text-muted small">Status</div>
+                                                <span class="badge" :class="bookingStatusBadge(bookingDetail.status)">{{ bookingDetail.status }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="p-3 bg-light rounded border text-center">
+                                                <div class="text-muted small">Payment</div>
+                                                <span class="badge" :class="bookingDetail.payment_status === 'Completed' ? 'bg-success' : 'bg-warning text-dark'">{{ bookingDetail.payment_status }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="p-3 bg-light rounded border text-center">
+                                                <div class="text-muted small">Booked On</div>
+                                                <div class="fw-bold small">{{ bookingDetail.booking_date ? new Date(bookingDetail.booking_date).toLocaleDateString() : 'N/A' }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3" v-if="bookingDetail.difficulty || bookingDetail.price">
+                                        <div class="col-4" v-if="bookingDetail.difficulty">
+                                            <div class="p-3 bg-light rounded border text-center">
+                                                <div class="text-muted small">Difficulty</div>
+                                                <span class="badge" :class="difficultyBadge(bookingDetail.difficulty)">{{ bookingDetail.difficulty }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-4" v-if="bookingDetail.price !== undefined">
+                                            <div class="p-3 bg-light rounded border text-center">
+                                                <div class="text-muted small">Price</div>
+                                                <div class="fw-bold text-success">₹{{ bookingDetail.price }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4" v-if="bookingDetail.user_phone">
+                                            <div class="p-3 bg-light rounded border text-center">
+                                                <div class="text-muted small">Phone</div>
+                                                <div class="fw-bold small">{{ bookingDetail.user_phone || 'N/A' }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light">
+                                    <button class="btn btn-secondary btn-sm" @click="showBookingDetailModal = false">Close</button>
+                                    <button 
+                                        v-if="bookingDetail.status === 'Booked'" 
+                                        class="btn btn-info btn-sm text-white" 
+                                        @click="updateBookingStatusAdmin(bookingDetail, 'Completed'); showBookingDetailModal = false"
+                                    >
+                                        <i class="bi bi-check-circle me-1"></i>Mark Completed
+                                    </button>
+                                    <button 
+                                        v-if="bookingDetail.status === 'Booked'" 
+                                        class="btn btn-danger btn-sm" 
+                                        @click="cancelBookingAdmin(bookingDetail); showBookingDetailModal = false"
+                                    >
+                                        <i class="bi bi-x-circle me-1"></i>Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Search Panel -->
@@ -690,6 +880,38 @@ const AdminDashboard = {
                 <div v-else-if="activeTab === 'reports'">
                     <h5 class="fw-bold mb-3">Reports & Trekking Statistics</h5>
                     <p class="text-muted">System statistics, user engagement, and monthly export reports.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Red Pop-up Modal -->
+        <div v-if="showErrorModal" class="modal d-block bg-dark bg-opacity-50" tabindex="-1" style="z-index: 1070;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title fw-bold d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i> Booking Conflict / Error
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" @click="showErrorModal = false"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-danger flex-shrink-0">
+                                <i class="bi bi-x-circle-fill display-6"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-2">Unable to Complete Action</h6>
+                                <p class="text-secondary mb-0 small" style="line-height: 1.5;">
+                                    {{ errorMessage }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-top-0">
+                        <button type="button" class="btn btn-danger btn-sm px-4 fw-semibold" @click="showErrorModal = false">
+                            <i class="bi bi-x-lg me-1"></i> Close
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -713,6 +935,11 @@ const AdminDashboard = {
             staffList: [],
             fullStaffList: [],
             userList: [],
+            allBookings: [],
+            bookingSearch: '',
+            bookingStatusFilter: '',
+            showBookingDetailModal: false,
+            bookingDetail: null,
             showAddModal: false,
             showEditModal: false,
             showDetailModal: false,
@@ -720,6 +947,8 @@ const AdminDashboard = {
             submitting: false,
             alertMessage: '',
             alertType: 'alert-success',
+            showErrorModal: false,
+            errorMessage: '',
             formError: '',
             newTrek: {
                 name: '',
@@ -777,6 +1006,16 @@ const AdminDashboard = {
         activeTabLabel() {
             const item = this.navItems.find(n => n.id === this.activeTab);
             return item ? item.label : 'Dashboard';
+        },
+        filteredBookings() {
+            return this.allBookings.filter(b => {
+                const matchesSearch = !this.bookingSearch || 
+                    (b.user_name && b.user_name.toLowerCase().includes(this.bookingSearch.toLowerCase())) ||
+                    (b.user_email && b.user_email.toLowerCase().includes(this.bookingSearch.toLowerCase())) ||
+                    (b.trek_name && b.trek_name.toLowerCase().includes(this.bookingSearch.toLowerCase()));
+                const matchesStatus = !this.bookingStatusFilter || b.status === this.bookingStatusFilter;
+                return matchesSearch && matchesStatus;
+            });
         }
     },
     mounted() {
@@ -793,6 +1032,7 @@ const AdminDashboard = {
         this.fetchStaffList();
         this.fetchFullStaff();
         this.fetchUsers();
+        this.fetchAllBookings();
     },
     methods: {
         async fetchTreks() {
@@ -1140,6 +1380,67 @@ const AdminDashboard = {
             } catch (err) {
                 alert('Server error updating staff status.');
             }
+        },
+        async fetchAllBookings() {
+            try {
+                const res = await fetch('/api/bookings');
+                if (res.ok) {
+                    this.allBookings = await res.json();
+                }
+            } catch (err) {
+                console.error('Failed to fetch bookings:', err);
+            }
+        },
+        openBookingDetailModal(b) {
+            this.bookingDetail = b;
+            this.showBookingDetailModal = true;
+        },
+        async cancelBookingAdmin(b) {
+            if (!confirm(`Cancel booking #${b.id} for "${b.trek_name}" by ${b.user_name}?`)) return;
+            try {
+                const res = await fetch(`/api/bookings/${b.id}/cancel`, { method: 'PUT' });
+                const data = await res.json();
+                if (res.ok) {
+                    this.alertMessage = data.message || 'Booking cancelled.';
+                    this.alertType = 'alert-warning';
+                    this.fetchAllBookings();
+                    this.fetchTreks();
+                } else {
+                    this.errorMessage = data.error || 'Failed to cancel booking.';
+                    this.showErrorModal = true;
+                }
+            } catch (err) {
+                this.errorMessage = 'Server error cancelling booking.';
+                this.showErrorModal = true;
+            }
+        },
+        async updateBookingStatusAdmin(b, newStatus) {
+            try {
+                const res = await fetch(`/api/bookings/${b.id}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.alertMessage = data.message || `Booking updated to ${newStatus}.`;
+                    this.alertType = 'alert-success';
+                    this.fetchAllBookings();
+                    this.fetchTreks();
+                } else {
+                    this.errorMessage = data.error || 'Failed to update booking.';
+                    this.showErrorModal = true;
+                }
+            } catch (err) {
+                this.errorMessage = 'Server error updating booking.';
+                this.showErrorModal = true;
+            }
+        },
+        bookingStatusBadge(st) {
+            if (st === 'Booked') return 'bg-success';
+            if (st === 'Cancelled') return 'bg-danger';
+            if (st === 'Completed') return 'bg-info text-white';
+            return 'bg-secondary';
         },
         handleLogout() {
             localStorage.removeItem('user');
