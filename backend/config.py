@@ -14,9 +14,9 @@ class Config:
     MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
     MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'false').lower() == 'true'
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')  # Gmail App Password
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', MAIL_USERNAME or 'noreply@trekking.com')
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '22f3001703@ds.study.iitm.ac.in')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', 'hsql uxrv fwiz uxma')  # Gmail App Password
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', MAIL_USERNAME or '22f3001703@ds.study.iitm.ac.in')
 
     # --- Celery (Redis broker) ---
     CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
