@@ -320,7 +320,23 @@ const TrekkerDashboard = {
 
                 <!-- History Panel -->
                 <div v-else-if="activeTab === 'history'">
-                    <h5 class="fw-bold mb-3">Trekking History</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0">Trekking History</h5>
+                            <small class="text-muted">View past completed treks and export booking records</small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button 
+                                class="btn btn-success btn-sm" 
+                                @click="exportBookingHistory"
+                                :disabled="exportInProgress"
+                            >
+                                <span v-if="exportInProgress" class="spinner-border spinner-border-sm me-1"></span>
+                                <i v-else class="bi bi-file-earmark-spreadsheet me-1"></i>
+                                {{ exportInProgress ? exportStatusText : 'Export All Bookings (CSV)' }}
+                            </button>
+                        </div>
+                    </div>
                     <p class="text-muted">View past completed treks and records.</p>
                     <div class="table-responsive" v-if="completedBookings.length > 0">
                         <table class="table table-hover align-middle border">
@@ -552,7 +568,12 @@ const TrekkerDashboard = {
             alertMessage: '',
             alertType: 'alert-success',
             showErrorModal: false,
-            errorMessage: ''
+            errorMessage: '',
+            // CSV Export State
+            exportInProgress: false,
+            exportTaskId: null,
+            exportStatusText: 'Processing...',
+            exportPollTimer: null
         }
     },
     computed: {
@@ -719,6 +740,82 @@ const TrekkerDashboard = {
         handleLogout() {
             localStorage.removeItem('user');
             this.$router.push('/login');
+        },
+        async exportBookingHistory() {
+            if (!this.userId) {
+                this.errorMessage = 'Please log in to export booking history.';
+                this.showErrorModal = true;
+                return;
+            }
+
+            this.exportInProgress = true;
+            this.exportStatusText = 'Starting export...';
+
+            try {
+                const res = await fetch('/api/export/bookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: this.userId })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.task_id) {
+                    this.exportTaskId = data.task_id;
+                    this.exportStatusText = 'Generating CSV...';
+                    this.pollExportStatus();
+                } else {
+                    this.exportInProgress = false;
+                    this.errorMessage = data.error || 'Failed to start export.';
+                    this.showErrorModal = true;
+                }
+            } catch (err) {
+                this.exportInProgress = false;
+                this.errorMessage = 'Server error starting export.';
+                this.showErrorModal = true;
+            }
+        },
+        pollExportStatus() {
+            if (this.exportPollTimer) clearInterval(this.exportPollTimer);
+
+            this.exportPollTimer = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/export/status/${this.exportTaskId}`);
+                    const data = await res.json();
+
+                    if (data.state === 'SUCCESS' && data.result) {
+                        clearInterval(this.exportPollTimer);
+                        this.exportPollTimer = null;
+                        this.exportStatusText = 'Download ready!';
+
+                        // Trigger file download
+                        const link = document.createElement('a');
+                        link.href = `/api/export/download/${data.result.filename}`;
+                        link.setAttribute('download', data.result.filename);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+
+                        this.alertMessage = `Booking history exported successfully! ${data.result.records} record(s) downloaded.`;
+                        this.alertType = 'alert-success';
+
+                        setTimeout(() => { this.exportInProgress = false; }, 1500);
+                    } else if (data.state === 'FAILURE') {
+                        clearInterval(this.exportPollTimer);
+                        this.exportPollTimer = null;
+                        this.exportInProgress = false;
+                        this.errorMessage = data.error || 'Export job failed.';
+                        this.showErrorModal = true;
+                    } else {
+                        this.exportStatusText = 'Generating CSV...';
+                    }
+                } catch (err) {
+                    clearInterval(this.exportPollTimer);
+                    this.exportPollTimer = null;
+                    this.exportInProgress = false;
+                    this.errorMessage = 'Error polling export status.';
+                    this.showErrorModal = true;
+                }
+            }, 2000);
         }
     }
 };

@@ -6,6 +6,16 @@ from models.models import Trek, User, Booking
 trek_bp = Blueprint('trek', __name__, url_prefix='/api')
 
 
+def _clear_trek_cache():
+    """Invalidate Redis cache for trek endpoints."""
+    try:
+        from extensions import cache
+        cache.delete('all_treks')
+        cache.delete_memoized(get_single_trek)
+    except Exception:
+        pass
+
+
 # ---------- GET /api/staff-list ----------
 @trek_bp.route('/staff-list', methods=['GET'])
 def get_staff_list():
@@ -23,6 +33,12 @@ def get_staff_list():
 # ---------- GET /api/treks ----------
 @trek_bp.route('/treks', methods=['GET'])
 def get_treks():
+    from extensions import cache
+    # Try to get from cache first
+    cached = cache.get('all_treks')
+    if cached is not None:
+        return jsonify(cached), 200
+
     treks = Trek.query.order_by(Trek.created_at.desc()).all()
     result = []
     for t in treks:
@@ -32,17 +48,27 @@ def get_treks():
         else:
             t_dict['assigned_staff_name'] = 'Unassigned'
         result.append(t_dict)
+
+    cache.set('all_treks', result, timeout=300)  # Cache for 5 minutes
     return jsonify(result), 200
 
 
 # ---------- GET /api/treks/<id> ----------
 @trek_bp.route('/treks/<int:trek_id>', methods=['GET'])
 def get_single_trek(trek_id):
+    from extensions import cache
+    cache_key = f'trek_{trek_id}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return jsonify(cached), 200
+
     trek = Trek.query.get(trek_id)
     if not trek:
         return jsonify({'error': 'Trek not found'}), 404
     t_dict = trek.to_dict()
     t_dict['assigned_staff_name'] = trek.assigned_staff.name if trek.assigned_staff else 'Unassigned'
+
+    cache.set(cache_key, t_dict, timeout=300)
     return jsonify(t_dict), 200
 
 
@@ -121,6 +147,7 @@ def create_trek():
 
     db.session.add(new_trek)
     db.session.commit()
+    _clear_trek_cache()
 
     res_dict = new_trek.to_dict()
     if new_trek.assigned_staff:
@@ -211,6 +238,7 @@ def update_trek(trek_id):
             trek.assigned_staff_id = None
 
     db.session.commit()
+    _clear_trek_cache()
 
     res_dict = trek.to_dict()
     res_dict['assigned_staff_name'] = trek.assigned_staff.name if trek.assigned_staff else 'Unassigned'
@@ -233,5 +261,6 @@ def delete_trek(trek_id):
 
     db.session.delete(trek)
     db.session.commit()
+    _clear_trek_cache()
 
     return jsonify({'message': f'Trek "{trek.name}" deleted successfully'}), 200

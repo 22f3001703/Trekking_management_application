@@ -1,6 +1,7 @@
 import os
-from database import db
-from flask import Flask, render_template
+from flask import Flask
+from config import Config
+from extensions import db, mail, cache
 
 # Paths
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -12,23 +13,39 @@ app = Flask(
     static_folder=FRONTEND_DIR,
     static_url_path='/static'
 )
-app.debug=True
-app.config["SQLALCHEMY_DATABASE_URI"]= 'sqlite:///trekking.db'
-db.init_app(app)
-app.app_context().push()
-app.secret_key = "123456"
 
+# Load configuration
+app.config.from_object(Config)
+app.debug = True
+
+# Initialize extensions with app
+db.init_app(app)
+mail.init_app(app)
+cache.init_app(app)
+
+app.app_context().push()
+
+# Celery integration
+from celery_app import make_celery
+celery = make_celery(app)
+
+# Ensure exports directory exists
+os.makedirs(Config.EXPORT_DIR, exist_ok=True)
+
+# Register blueprints
 from routes.Login import login_bp
 from routes.auth import auth_bp
 from routes.trek import trek_bp
 from routes.staff import staff_bp
 from routes.booking import booking_bp
+from routes.export import export_bp
 
 app.register_blueprint(login_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(trek_bp)
 app.register_blueprint(staff_bp)
 app.register_blueprint(booking_bp)
+app.register_blueprint(export_bp)
 
 # Import models so SQLAlchemy creates tables
 from models.models import User, Trek, Booking, StaffProfile

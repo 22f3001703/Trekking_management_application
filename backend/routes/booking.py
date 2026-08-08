@@ -5,6 +5,15 @@ from models.models import User, Trek, Booking
 booking_bp = Blueprint('booking', __name__, url_prefix='/api')
 
 
+def _clear_trek_cache():
+    """Invalidate Redis cache when booking changes affect slot counts."""
+    try:
+        from extensions import cache
+        cache.delete('all_treks')
+    except Exception:
+        pass
+
+
 def check_date_conflict(user_id, trek, exclude_booking_id=None):
     """
     Check if user has any active ('Booked') booking whose trek date range
@@ -69,6 +78,7 @@ def create_booking():
             if trek.available_slots > 0:
                 trek.available_slots -= 1
             db.session.commit()
+            _clear_trek_cache()
             return jsonify({
                 'message': 'Booking re-activated successfully',
                 'booking': existing.to_dict()
@@ -85,6 +95,7 @@ def create_booking():
 
     db.session.add(new_booking)
     db.session.commit()
+    _clear_trek_cache()
 
     b_dict = new_booking.to_dict()
     b_dict['trek_name'] = trek.name
@@ -137,6 +148,7 @@ def cancel_booking(booking_id):
         booking.trek.available_slots += 1
 
     db.session.commit()
+    _clear_trek_cache()
 
     return jsonify({'message': 'Booking cancelled successfully'}), 200
 
@@ -176,6 +188,7 @@ def update_booking_status(booking_id):
 
     booking.status = new_status
     db.session.commit()
+    _clear_trek_cache()
 
     return jsonify({
         'message': f'Booking status updated to "{new_status}"',
