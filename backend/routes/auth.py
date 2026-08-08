@@ -92,11 +92,31 @@ def update_user_status(user_id):
         return jsonify({'error': 'Invalid status. Expected 1 (Active), 2 (Deactivated), or 0 (Blacklisted)'}), 400
 
     user.status = new_status
+
+    # Unassign all treks assigned to staff member if deactivated or blacklisted
+    unassigned_count = 0
+    if new_status in [0, 2]:
+        from models.models import Trek
+        assigned_treks = Trek.query.filter_by(assigned_staff_id=user.id).all()
+        unassigned_count = len(assigned_treks)
+        for trek in assigned_treks:
+            trek.assigned_staff_id = None
+
     db.session.commit()
 
+    try:
+        from cache import cache
+        cache.delete('all_treks')
+    except Exception:
+        pass
+
     status_labels = {1: 'Active', 2: 'Deactivated', 0: 'Blacklisted'}
+    msg = f'User status updated to {status_labels[new_status]}'
+    if unassigned_count > 0:
+        msg += f' and {unassigned_count} assigned trek(s) were set to Not Allotted.'
+
     return jsonify({
-        'message': f'User status updated to {status_labels[new_status]}',
+        'message': msg,
         'user': user.to_dict()
     }), 200
 

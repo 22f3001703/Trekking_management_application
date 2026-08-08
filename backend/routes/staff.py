@@ -158,6 +158,9 @@ def get_staff_treks(staff_id):
     if not staff_user:
         return jsonify({'error': 'Staff member not found'}), 404
 
+    if staff_user.status != 1:
+        return jsonify({'error': 'Staff account is deactivated or blacklisted'}), 403
+
     treks = Trek.query.filter_by(assigned_staff_id=staff_id).order_by(Trek.created_at.desc()).all()
     result = []
     for t in treks:

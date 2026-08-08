@@ -168,6 +168,16 @@ def update_trek(trek_id):
 
     data = request.get_json() or {}
 
+    # If request is sent from staff, verify they are assigned to this trek
+    requester_staff_id = request.args.get('staff_id') or data.get('staff_id')
+    if requester_staff_id:
+        try:
+            requester_staff_id = int(requester_staff_id)
+            if trek.assigned_staff_id != requester_staff_id:
+                return jsonify({'error': 'Unauthorized. You are not assigned to manage this trek.'}), 403
+        except (ValueError, TypeError):
+            pass
+
     if 'name' in data and data['name'].strip():
         trek.name = data['name'].strip()
 

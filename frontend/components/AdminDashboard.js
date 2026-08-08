@@ -115,6 +115,56 @@ const AdminDashboard = {
                             </div>
                         </div>
                     </div>
+
+                    <!-- Recent Bookings Table Section -->
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark">Recent Booking Details</h6>
+                                <small class="text-muted">Overview of latest booking activities across all treks</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" @click="activeTab = 'booking'">
+                                View All Bookings <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+
+                        <div class="table-responsive" v-if="allBookings.length > 0">
+                            <table class="table table-hover align-middle border mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Trek</th>
+                                        <th>Location</th>
+                                        <th>Booking Date</th>
+                                        <th>Status</th>
+                                        <th>Payment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(b, index) in recentBookings" :key="b.id" style="cursor: pointer;" @click="openBookingDetailModal(b)">
+                                        <td>{{ index + 1 }}</td>
+                                        <td class="fw-semibold text-dark">{{ b.user_name }}</td>
+                                        <td class="small text-muted">{{ b.user_email }}</td>
+                                        <td class="fw-semibold text-primary">{{ b.trek_name }}</td>
+                                        <td class="small">{{ b.location }}</td>
+                                        <td class="small">{{ b.booking_date ? new Date(b.booking_date).toLocaleDateString() : 'N/A' }}</td>
+                                        <td>
+                                            <span class="badge" :class="bookingStatusBadge(b.status)">{{ b.status }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge" :class="b.payment_status === 'Completed' ? 'bg-success' : 'bg-warning text-dark'">{{ b.payment_status }}</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="text-center py-4 text-muted border rounded bg-light">
+                            <i class="bi bi-journal-check fs-2 mb-2 d-block text-secondary"></i>
+                            <span class="small">No recent bookings recorded.</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- My Treks Panel -->
@@ -1308,6 +1358,9 @@ const AdminDashboard = {
         }
     },
     computed: {
+        recentBookings() {
+            return this.allBookings.slice(0, 10);
+        },
         activeTabLabel() {
             const item = this.navItems.find(n => n.id === this.activeTab);
             return item ? item.label : 'Dashboard';
@@ -1754,6 +1807,7 @@ const AdminDashboard = {
                     this.alertType = newStatus === 1 ? 'alert-success' : (newStatus === 2 ? 'alert-warning' : 'alert-danger');
                     this.fetchFullStaff();
                     this.fetchStaffList();
+                    this.fetchTreks();
                 } else {
                     alert(data.error || 'Failed to update staff status.');
                 }
