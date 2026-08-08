@@ -99,3 +99,85 @@ def update_user_status(user_id):
         'message': f'User status updated to {status_labels[new_status]}',
         'user': user.to_dict()
     }), 200
+
+
+# ---------- GET /api/admin/search ----------
+@auth_bp.route('/admin/search', methods=['GET'])
+def admin_search():
+    q = request.args.get('q', '').strip()
+    
+    if not q:
+        return jsonify({
+            'query': '',
+            'results': {
+                'users': [],
+                'staff': [],
+                'treks': []
+            }
+        }), 200
+
+    search_pattern = f"%{q}%"
+
+    # 1. Search Users (Trekkers)
+    users_query = User.query.filter(
+        User.role.in_(['trekker', 'user']),
+        (User.name.ilike(search_pattern) | User.email.ilike(search_pattern) | User.phone.ilike(search_pattern))
+    ).order_by(User.created_at.desc()).all()
+
+    users_res = []
+    for u in users_query:
+        u_dict = u.to_dict()
+        u_dict['bookings_count'] = len(u.bookings) if u.bookings else 0
+        users_res.append(u_dict)
+
+    # 2. Search Staff (User + StaffProfile)
+    from models.models import StaffProfile, Trek
+    staff_query = db.session.query(User).outerjoin(StaffProfile, User.id == StaffProfile.user_id).filter(
+        User.role == 'staff',
+        (
+            User.name.ilike(search_pattern) | 
+            User.email.ilike(search_pattern) | 
+            User.phone.ilike(search_pattern) |
+            StaffProfile.specialization.ilike(search_pattern)
+        )
+    ).order_by(User.created_at.desc()).all()
+
+    staff_res = []
+    for s in staff_query:
+        s_dict = s.to_dict()
+        if s.staff_profile:
+            s_dict['specialization'] = s.staff_profile.specialization
+            s_dict['experience_years'] = s.staff_profile.experience_years
+        else:
+            s_dict['specialization'] = 'General Guide'
+            s_dict['experience_years'] = 0
+        
+        s_dict['assigned_treks_count'] = len(s.assigned_treks) if s.assigned_treks else 0
+        staff_res.append(s_dict)
+
+    # 3. Search Treks
+    treks_query = Trek.query.filter(
+        (
+            Trek.name.ilike(search_pattern) |
+            Trek.location.ilike(search_pattern) |
+            Trek.difficulty.ilike(search_pattern) |
+            Trek.status.ilike(search_pattern) |
+            Trek.description.ilike(search_pattern)
+        )
+    ).order_by(Trek.created_at.desc()).all()
+
+    treks_res = []
+    for t in treks_query:
+        t_dict = t.to_dict()
+        t_dict['assigned_staff_name'] = t.assigned_staff.name if t.assigned_staff else 'Unassigned'
+        treks_res.append(t_dict)
+
+    return jsonify({
+        'query': q,
+        'results': {
+            'users': users_res,
+            'staff': staff_res,
+            'treks': treks_res
+        }
+    }), 200
+

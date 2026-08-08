@@ -121,14 +121,20 @@ const AdminDashboard = {
                 <div v-else-if="activeTab === 'my-treks'">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="fw-bold mb-0">Trekking Routes & Events</h5>
-                        <button class="btn btn-primary btn-sm" @click="showAddModal = true">
-                            <i class="bi bi-plus-lg me-1"></i> Add New Trek
-                        </button>
+                        <div class="d-flex gap-2 align-items-center">
+                            <div class="input-group input-group-sm" style="width: 250px;">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" placeholder="Filter treks..." v-model="myTrekSearch">
+                            </div>
+                            <button class="btn btn-primary btn-sm text-nowrap" @click="showAddModal = true">
+                                <i class="bi bi-plus-lg me-1"></i> Add New Trek
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Trek Card Grid -->
-                    <div class="row row-cols-1 row-cols-md-3 g-3" v-if="treks.length > 0">
-                        <div class="col" v-for="t in treks" :key="t.id">
+                    <div class="row row-cols-1 row-cols-md-3 g-3" v-if="filteredTreks.length > 0">
+                        <div class="col" v-for="t in filteredTreks" :key="t.id">
                             <div class="card h-100 shadow-sm border-0" style="overflow: hidden;">
                                 <!-- Trek Image -->
                                 <div class="position-relative overflow-hidden" style="height: 180px;">
@@ -441,13 +447,19 @@ const AdminDashboard = {
                 <div v-else-if="activeTab === 'staff'">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="fw-bold mb-0">Trek Staff Management</h5>
-                        <button class="btn btn-primary btn-sm" @click="showAddStaffModal = true">
-                            <i class="bi bi-person-plus me-1"></i> Add Staff Member
-                        </button>
+                        <div class="d-flex gap-2 align-items-center">
+                            <div class="input-group input-group-sm" style="width: 250px;">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" placeholder="Filter staff..." v-model="staffSearch">
+                            </div>
+                            <button class="btn btn-primary btn-sm text-nowrap" @click="showAddStaffModal = true">
+                                <i class="bi bi-person-plus me-1"></i> Add Staff Member
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Staff List Table -->
-                    <div class="table-responsive" v-if="fullStaffList.length > 0">
+                    <div class="table-responsive" v-if="filteredStaff.length > 0">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
@@ -462,7 +474,7 @@ const AdminDashboard = {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="s in fullStaffList" :key="s.id">
+                                <tr v-for="s in filteredStaff" :key="s.id">
                                     <td class="fw-semibold text-dark">{{ s.name }}</td>
                                     <td>{{ s.email }}</td>
                                     <td>{{ s.phone || 'N/A' }}</td>
@@ -611,13 +623,19 @@ const AdminDashboard = {
                 <div v-else-if="activeTab === 'users'">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="fw-bold mb-0">Registered Trekkers & Users</h5>
-                        <button class="btn btn-outline-secondary btn-sm" @click="fetchUsers">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-                        </button>
+                        <div class="d-flex gap-2 align-items-center">
+                            <div class="input-group input-group-sm" style="width: 250px;">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" placeholder="Filter users..." v-model="userSearch">
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm text-nowrap" @click="fetchUsers">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Users List Table -->
-                    <div class="table-responsive" v-if="userList.length > 0">
+                    <div class="table-responsive" v-if="filteredUsers.length > 0">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
@@ -633,7 +651,7 @@ const AdminDashboard = {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="(u, index) in userList" :key="u.id">
+                                <tr v-for="(u, index) in filteredUsers" :key="u.id">
                                     <td>{{ index + 1 }}</td>
                                     <td class="fw-semibold text-dark">{{ u.name }}</td>
                                     <td>{{ u.email }}</td>
@@ -869,10 +887,288 @@ const AdminDashboard = {
 
                 <!-- Search Panel -->
                 <div v-else-if="activeTab === 'search'">
-                    <h5 class="fw-bold mb-3">Search System</h5>
-                    <div class="input-group mb-3 style-search">
-                        <input type="text" class="form-control" placeholder="Search routes, users, staff or bookings...">
-                        <button class="btn btn-primary" type="button"><i class="bi bi-search"></i> Search</button>
+                    <div class="mb-4">
+                        <h5 class="fw-bold mb-1">Global Admin Search</h5>
+                        <p class="text-muted small">Search across all Registered Users (Trekkers), Trek Staff members, and Trekking Routes in real-time.</p>
+                    </div>
+
+                    <!-- Search Input Box -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-body p-3">
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-white border-end-0 text-primary">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input 
+                                    type="text" 
+                                    class="form-control border-start-0 border-end-0 fs-6 shadow-none" 
+                                    placeholder="Search users, staff, treks by name, email, phone, location..."
+                                    v-model="globalSearchQuery"
+                                    @input="triggerGlobalSearch"
+                                    @keyup.enter="triggerGlobalSearch"
+                                >
+                                <button v-if="globalSearchQuery" class="btn btn-white border-top border-bottom border-0 text-muted" type="button" @click="clearGlobalSearch" title="Clear Search">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                </button>
+                                <button class="btn btn-primary px-4 fw-semibold" type="button" @click="triggerGlobalSearch" :disabled="isSearching">
+                                    <span v-if="isSearching" class="spinner-border spinner-border-sm me-1"></span>
+                                    <i v-else class="bi bi-search me-1"></i> Search
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Suggestions (when query is empty) -->
+                    <div v-if="!globalSearchQuery" class="text-center py-5 bg-light rounded border border-dash mb-4">
+                        <div class="mb-3 text-primary">
+                            <i class="bi bi-search-heart display-4"></i>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-2">Search Anything in the Trekking System</h6>
+                        <p class="text-muted small mb-3" style="max-width: 500px; margin: 0 auto;">
+                            Type any keyword in the search bar above to quickly locate users, staff members, trek routes, or difficulty levels.
+                        </p>
+                        <div class="d-flex justify-content-center flex-wrap gap-2">
+                            <span class="text-muted small me-2 align-self-center">Popular keywords:</span>
+                            <button class="btn btn-outline-secondary btn-sm rounded-pill" @click="setQuickSearch('Kedarkantha')">Kedarkantha</button>
+                            <button class="btn btn-outline-secondary btn-sm rounded-pill" @click="setQuickSearch('Moderate')">Moderate</button>
+                            <button class="btn btn-outline-secondary btn-sm rounded-pill" @click="setQuickSearch('Guide')">Guide</button>
+                            <button class="btn btn-outline-secondary btn-sm rounded-pill" @click="setQuickSearch('Open')">Open Status</button>
+                        </div>
+                    </div>
+
+                    <!-- Search Category Filters & Result Summary (when query is present) -->
+                    <div v-else>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                            <!-- Category Filter Buttons -->
+                            <div class="btn-group" role="group">
+                                <button 
+                                    type="button" 
+                                    class="btn btn-sm"
+                                    :class="searchCategoryFilter === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                                    @click="searchCategoryFilter = 'all'"
+                                >
+                                    All Results <span class="badge ms-1" :class="searchCategoryFilter === 'all' ? 'bg-white text-primary' : 'bg-secondary'">{{ totalSearchResultsCount }}</span>
+                                </button>
+                                <button 
+                                    type="button" 
+                                    class="btn btn-sm"
+                                    :class="searchCategoryFilter === 'treks' ? 'btn-primary' : 'btn-outline-secondary'"
+                                    @click="searchCategoryFilter = 'treks'"
+                                >
+                                    Treks <span class="badge ms-1" :class="searchCategoryFilter === 'treks' ? 'bg-white text-primary' : 'bg-secondary'">{{ searchTreksResults.length }}</span>
+                                </button>
+                                <button 
+                                    type="button" 
+                                    class="btn btn-sm"
+                                    :class="searchCategoryFilter === 'staff' ? 'btn-primary' : 'btn-outline-secondary'"
+                                    @click="searchCategoryFilter = 'staff'"
+                                >
+                                    Staff <span class="badge ms-1" :class="searchCategoryFilter === 'staff' ? 'bg-white text-primary' : 'bg-secondary'">{{ searchStaffResults.length }}</span>
+                                </button>
+                                <button 
+                                    type="button" 
+                                    class="btn btn-sm"
+                                    :class="searchCategoryFilter === 'users' ? 'btn-primary' : 'btn-outline-secondary'"
+                                    @click="searchCategoryFilter = 'users'"
+                                >
+                                    Users <span class="badge ms-1" :class="searchCategoryFilter === 'users' ? 'bg-white text-primary' : 'bg-secondary'">{{ searchUsersResults.length }}</span>
+                                </button>
+                            </div>
+
+                            <div class="text-muted small">
+                                Showing <strong>{{ totalSearchResultsCount }}</strong> match(es) for "<strong>{{ globalSearchQuery }}</strong>"
+                            </div>
+                        </div>
+
+                        <!-- 0 Results State -->
+                        <div v-if="totalSearchResultsCount === 0" class="text-center py-5 border rounded bg-light">
+                            <i class="bi bi-emoji-frown fs-1 text-muted mb-2 d-block"></i>
+                            <h6 class="fw-bold mb-1">No matches found</h6>
+                            <p class="text-muted small mb-3">No users, staff, or treks matched your search query "<strong>{{ globalSearchQuery }}</strong>".</p>
+                            <button class="btn btn-outline-primary btn-sm" @click="clearGlobalSearch">Clear Search</button>
+                        </div>
+
+                        <!-- Categorized Results Sections -->
+                        <div v-else class="d-flex flex-column gap-4">
+
+                            <!-- Section 1: Treks Results -->
+                            <div v-if="(searchCategoryFilter === 'all' || searchCategoryFilter === 'treks') && searchTreksResults.length > 0" class="card border-0 shadow-sm">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center py-3 border-0">
+                                    <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                                        <i class="bi bi-compass text-primary me-2 fs-5"></i>
+                                        Trekking Routes & Events
+                                    </h6>
+                                    <span class="badge bg-primary rounded-pill">{{ searchTreksResults.length }} found</span>
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="row row-cols-1 row-cols-md-3 g-3">
+                                        <div class="col" v-for="t in searchTreksResults" :key="t.id">
+                                            <div class="card h-100 shadow-sm border">
+                                                <div class="position-relative overflow-hidden" style="height: 150px;">
+                                                    <img
+                                                        :src="t.image || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80'"
+                                                        style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                                                        alt="Trek image"
+                                                        @error="$event.target.src='https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80'"
+                                                    >
+                                                    <div class="position-absolute top-0 start-0 m-2">
+                                                        <span class="badge" :class="difficultyBadge(t.difficulty)">{{ t.difficulty }}</span>
+                                                    </div>
+                                                    <div class="position-absolute top-0 end-0 m-2">
+                                                        <span class="badge" :class="statusBadge(t.status)">{{ t.status }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body d-flex flex-column pb-2">
+                                                    <h6 class="card-title fw-bold text-dark mb-1 text-truncate">{{ t.name }}</h6>
+                                                    <p class="text-muted small mb-2 text-truncate">
+                                                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ t.location }}
+                                                    </p>
+                                                    <div class="d-flex flex-wrap gap-2 mb-3 small">
+                                                        <span class="text-muted"><i class="bi bi-clock me-1"></i>{{ t.duration_days }} days</span>
+                                                        <span class="text-muted"><i class="bi bi-people me-1"></i>{{ t.available_slots }} slots</span>
+                                                        <span class="fw-semibold text-success"><i class="bi bi-currency-rupee"></i>{{ t.price }}</span>
+                                                    </div>
+                                                    <div class="mt-auto d-flex gap-2">
+                                                        <button class="btn btn-outline-secondary btn-sm flex-grow-1" @click="openDetailModal(t)">
+                                                            <i class="bi bi-eye me-1"></i> Details
+                                                        </button>
+                                                        <button class="btn btn-outline-primary btn-sm" @click="openEditTrekModal(t)">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 2: Trek Staff Results -->
+                            <div v-if="(searchCategoryFilter === 'all' || searchCategoryFilter === 'staff') && searchStaffResults.length > 0" class="card border-0 shadow-sm">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center py-3 border-0">
+                                    <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                                        <i class="bi bi-person-badge text-warning me-2 fs-5"></i>
+                                        Trek Staff Members
+                                    </h6>
+                                    <span class="badge bg-warning text-dark rounded-pill">{{ searchStaffResults.length }} found</span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Email</th>
+                                                    <th>Phone</th>
+                                                    <th>Specialization</th>
+                                                    <th>Experience</th>
+                                                    <th>Assigned Treks</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="s in searchStaffResults" :key="s.id">
+                                                    <td class="fw-semibold text-dark">{{ s.name }}</td>
+                                                    <td>{{ s.email }}</td>
+                                                    <td>{{ s.phone || 'N/A' }}</td>
+                                                    <td><span class="badge bg-light text-dark border">{{ s.specialization || 'General Guide' }}</span></td>
+                                                    <td>{{ s.experience_years }} yrs</td>
+                                                    <td>
+                                                        <span :class="['badge', s.assigned_treks_count > 0 ? 'bg-info text-white' : 'bg-secondary']">
+                                                            {{ s.assigned_treks_count }} trek(s)
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span :class="['badge', userStatusBadge(s.status)]">
+                                                            {{ userStatusLabel(s.status) }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm me-1">
+                                                            <button v-if="s.status !== 1" class="btn btn-outline-success btn-sm" @click="changeStaffStatus(s, 1)" title="Activate Staff">
+                                                                <i class="bi bi-check-lg"></i>
+                                                            </button>
+                                                            <button v-if="s.status !== 2" class="btn btn-outline-warning text-dark btn-sm" @click="changeStaffStatus(s, 2)" title="Deactivate Staff">
+                                                                <i class="bi bi-pause-fill"></i>
+                                                            </button>
+                                                            <button v-if="s.status !== 0" class="btn btn-outline-danger btn-sm" @click="changeStaffStatus(s, 0)" title="Blacklist Staff">
+                                                                <i class="bi bi-slash-circle"></i>
+                                                            </button>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-outline-primary" @click="openEditStaffModal(s)">
+                                                            <i class="bi bi-pencil"></i> Edit
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 3: Registered Users (Trekkers) Results -->
+                            <div v-if="(searchCategoryFilter === 'all' || searchCategoryFilter === 'users') && searchUsersResults.length > 0" class="card border-0 shadow-sm">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center py-3 border-0">
+                                    <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                                        <i class="bi bi-people text-success me-2 fs-5"></i>
+                                        Registered Trekkers & Users
+                                    </h6>
+                                    <span class="badge bg-success rounded-pill">{{ searchUsersResults.length }} found</span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Name</th>
+                                                    <th>Email</th>
+                                                    <th>Phone</th>
+                                                    <th>Role</th>
+                                                    <th>Bookings</th>
+                                                    <th>Joined Date</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="(u, index) in searchUsersResults" :key="u.id">
+                                                    <td>{{ index + 1 }}</td>
+                                                    <td class="fw-semibold text-dark">{{ u.name }}</td>
+                                                    <td>{{ u.email }}</td>
+                                                    <td>{{ u.phone || 'N/A' }}</td>
+                                                    <td><span class="badge bg-info text-dark">{{ u.role }}</span></td>
+                                                    <td>
+                                                        <span class="badge bg-secondary">{{ u.bookings_count }} booking(s)</span>
+                                                    </td>
+                                                    <td>{{ u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A' }}</td>
+                                                    <td>
+                                                        <span :class="['badge', userStatusBadge(u.status)]">
+                                                            {{ userStatusLabel(u.status) }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm">
+                                                            <button v-if="u.status !== 1" class="btn btn-outline-success btn-sm" @click="changeUserStatus(u, 1)" title="Activate User">
+                                                                <i class="bi bi-check-lg me-1"></i>Activate
+                                                            </button>
+                                                            <button v-if="u.status !== 2" class="btn btn-outline-warning text-dark btn-sm" @click="changeUserStatus(u, 2)" title="Deactivate User">
+                                                                <i class="bi bi-pause-fill me-1"></i>Deactivate
+                                                            </button>
+                                                            <button v-if="u.status !== 0" class="btn btn-outline-danger btn-sm" @click="changeUserStatus(u, 0)" title="Blacklist User">
+                                                                <i class="bi bi-slash-circle me-1"></i>Blacklist
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
                     </div>
                 </div>
 
@@ -938,6 +1234,15 @@ const AdminDashboard = {
             allBookings: [],
             bookingSearch: '',
             bookingStatusFilter: '',
+            // Search System State
+            globalSearchQuery: '',
+            searchCategoryFilter: 'all',
+            searchApiResults: null,
+            isSearching: false,
+            // In-tab Quick Filters
+            myTrekSearch: '',
+            staffSearch: '',
+            userSearch: '',
             showBookingDetailModal: false,
             bookingDetail: null,
             showAddModal: false,
@@ -1016,6 +1321,81 @@ const AdminDashboard = {
                 const matchesStatus = !this.bookingStatusFilter || b.status === this.bookingStatusFilter;
                 return matchesSearch && matchesStatus;
             });
+        },
+        filteredTreks() {
+            if (!this.myTrekSearch) return this.treks;
+            const q = this.myTrekSearch.toLowerCase();
+            return this.treks.filter(t => 
+                (t.name && t.name.toLowerCase().includes(q)) ||
+                (t.location && t.location.toLowerCase().includes(q)) ||
+                (t.difficulty && t.difficulty.toLowerCase().includes(q)) ||
+                (t.status && t.status.toLowerCase().includes(q)) ||
+                (t.assigned_staff_name && t.assigned_staff_name.toLowerCase().includes(q))
+            );
+        },
+        filteredStaff() {
+            if (!this.staffSearch) return this.fullStaffList;
+            const q = this.staffSearch.toLowerCase();
+            return this.fullStaffList.filter(s => 
+                (s.name && s.name.toLowerCase().includes(q)) ||
+                (s.email && s.email.toLowerCase().includes(q)) ||
+                (s.phone && s.phone.toLowerCase().includes(q)) ||
+                (s.specialization && s.specialization.toLowerCase().includes(q))
+            );
+        },
+        filteredUsers() {
+            if (!this.userSearch) return this.userList;
+            const q = this.userSearch.toLowerCase();
+            return this.userList.filter(u => 
+                (u.name && u.name.toLowerCase().includes(q)) ||
+                (u.email && u.email.toLowerCase().includes(q)) ||
+                (u.phone && u.phone.toLowerCase().includes(q)) ||
+                (u.role && u.role.toLowerCase().includes(q))
+            );
+        },
+        searchTreksResults() {
+            if (this.searchApiResults && this.searchApiResults.results) {
+                return this.searchApiResults.results.treks || [];
+            }
+            if (!this.globalSearchQuery) return [];
+            const q = this.globalSearchQuery.toLowerCase();
+            return this.treks.filter(t => 
+                (t.name && t.name.toLowerCase().includes(q)) ||
+                (t.location && t.location.toLowerCase().includes(q)) ||
+                (t.difficulty && t.difficulty.toLowerCase().includes(q)) ||
+                (t.description && t.description.toLowerCase().includes(q)) ||
+                (t.status && t.status.toLowerCase().includes(q)) ||
+                (t.assigned_staff_name && t.assigned_staff_name.toLowerCase().includes(q))
+            );
+        },
+        searchStaffResults() {
+            if (this.searchApiResults && this.searchApiResults.results) {
+                return this.searchApiResults.results.staff || [];
+            }
+            if (!this.globalSearchQuery) return [];
+            const q = this.globalSearchQuery.toLowerCase();
+            return this.fullStaffList.filter(s => 
+                (s.name && s.name.toLowerCase().includes(q)) ||
+                (s.email && s.email.toLowerCase().includes(q)) ||
+                (s.phone && s.phone.toLowerCase().includes(q)) ||
+                (s.specialization && s.specialization.toLowerCase().includes(q))
+            );
+        },
+        searchUsersResults() {
+            if (this.searchApiResults && this.searchApiResults.results) {
+                return this.searchApiResults.results.users || [];
+            }
+            if (!this.globalSearchQuery) return [];
+            const q = this.globalSearchQuery.toLowerCase();
+            return this.userList.filter(u => 
+                (u.name && u.name.toLowerCase().includes(q)) ||
+                (u.email && u.email.toLowerCase().includes(q)) ||
+                (u.phone && u.phone.toLowerCase().includes(q)) ||
+                (u.role && u.role.toLowerCase().includes(q))
+            );
+        },
+        totalSearchResultsCount() {
+            return this.searchTreksResults.length + this.searchStaffResults.length + this.searchUsersResults.length;
         }
     },
     mounted() {
@@ -1441,6 +1821,35 @@ const AdminDashboard = {
             if (st === 'Cancelled') return 'bg-danger';
             if (st === 'Completed') return 'bg-info text-white';
             return 'bg-secondary';
+        },
+        async triggerGlobalSearch() {
+            if (!this.globalSearchQuery.trim()) {
+                this.searchApiResults = null;
+                return;
+            }
+            this.isSearching = true;
+            try {
+                const res = await fetch(`/api/admin/search?q=${encodeURIComponent(this.globalSearchQuery.trim())}`);
+                if (res.ok) {
+                    this.searchApiResults = await res.json();
+                } else {
+                    this.searchApiResults = null;
+                }
+            } catch (err) {
+                console.error('Error fetching search results:', err);
+                this.searchApiResults = null;
+            } finally {
+                this.isSearching = false;
+            }
+        },
+        clearGlobalSearch() {
+            this.globalSearchQuery = '';
+            this.searchApiResults = null;
+            this.searchCategoryFilter = 'all';
+        },
+        setQuickSearch(term) {
+            this.globalSearchQuery = term;
+            this.triggerGlobalSearch();
         },
         handleLogout() {
             localStorage.removeItem('user');

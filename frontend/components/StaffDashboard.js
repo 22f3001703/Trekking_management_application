@@ -167,45 +167,188 @@ const StaffDashboard = {
                 <div v-else-if="activeTab === 'participants'">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h5 class="fw-bold mb-0">All Trek Participants</h5>
-                            <small class="text-muted">Participants registered for your assigned treks</small>
+                            <h5 class="fw-bold mb-0">Participant Management System</h5>
+                            <small class="text-muted">Manage trekkers, check-in status, attendance, and contact information</small>
                         </div>
-                        <button class="btn btn-outline-secondary btn-sm" @click="fetchAssignedTreks">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-                        </button>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success btn-sm" @click="exportParticipantsCSV()" :disabled="filteredParticipants.length === 0">
+                                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Manifest (CSV)
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" @click="fetchAssignedTreks">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                            </button>
+                        </div>
                     </div>
 
+                    <!-- Metrics Summary Tiles -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3 col-6">
+                            <div class="card border-0 bg-light shadow-sm p-3 border-start border-4 border-primary">
+                                <div class="text-muted small">Total Participants</div>
+                                <div class="fs-4 fw-bold text-dark">{{ totalParticipantsCount }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="card border-0 bg-light shadow-sm p-3 border-start border-4 border-success">
+                                <div class="text-muted small">Checked In (Present)</div>
+                                <div class="fs-4 fw-bold text-success">{{ checkedInCount }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="card border-0 bg-light shadow-sm p-3 border-start border-4 border-warning">
+                                <div class="text-muted small">Pending Check-in</div>
+                                <div class="fs-4 fw-bold text-warning">{{ pendingCheckinCount }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="card border-0 bg-light shadow-sm p-3 border-start border-4 border-danger">
+                                <div class="text-muted small">Cancelled Bookings</div>
+                                <div class="fs-4 fw-bold text-danger">{{ cancelledParticipantsCount }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Control Bar -->
+                    <div class="card border-0 shadow-sm mb-4 bg-light">
+                        <div class="card-body p-3">
+                            <div class="row g-2 align-items-center">
+                                <!-- Search Bar -->
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                        <input 
+                                            type="text" 
+                                            class="form-control" 
+                                            placeholder="Search name, email, phone, trek..."
+                                            v-model="participantSearch"
+                                        >
+                                        <button v-if="participantSearch" class="btn btn-white border border-start-0 text-muted" @click="participantSearch = ''">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Filter by Trek -->
+                                <div class="col-md-3">
+                                    <select v-model="participantTrekFilter" class="form-select form-select-sm">
+                                        <option value="">All Assigned Treks</option>
+                                        <option v-for="t in assignedTreks" :key="t.id" :value="t.id">{{ t.name }}</option>
+                                    </select>
+                                </div>
+
+                                <!-- Filter by Booking Status -->
+                                <div class="col-md-2">
+                                    <select v-model="participantStatusFilter" class="form-select form-select-sm">
+                                        <option value="">All Statuses</option>
+                                        <option value="Booked">Booked</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                        <option value="Completed">Completed</option>
+                                    </select>
+                                </div>
+
+                                <!-- Filter by Check-in Status -->
+                                <div class="col-md-2">
+                                    <select v-model="participantCheckinFilter" class="form-select form-select-sm">
+                                        <option value="">All Check-in States</option>
+                                        <option value="Checked In">Checked In</option>
+                                        <option value="Not Checked In">Not Checked In</option>
+                                    </select>
+                                </div>
+
+                                <!-- Batch Check-in Button -->
+                                <div class="col-md-1 text-end">
+                                    <button 
+                                        class="btn btn-outline-success btn-sm w-100" 
+                                        @click="markAllCheckedIn"
+                                        title="Mark all filtered as Checked In"
+                                    >
+                                        <i class="bi bi-check-all me-1"></i> Check All
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Participant List Table -->
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle border">
+                        <table class="table table-hover align-middle border mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>Trek Name</th>
-                                    <th>Participant Name</th>
-                                    <th>Email</th>
-                                    <th>Phone</th>
+                                    <th>Participant</th>
+                                    <th>Trek Route</th>
+                                    <th>Contact Info</th>
                                     <th>Booking Date</th>
                                     <th>Status</th>
-                                    <th>Payment</th>
+                                    <th>Check-in / Attendance</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody v-if="allParticipants.length > 0">
-                                <tr v-for="(p, index) in allParticipants" :key="p.booking_id + '-' + index">
+                            <tbody v-if="filteredParticipants.length > 0">
+                                <tr v-for="(p, index) in filteredParticipants" :key="p.booking_id + '-' + index">
                                     <td>{{ index + 1 }}</td>
-                                    <td class="fw-semibold text-primary">{{ p.trek_name }}</td>
-                                    <td class="fw-semibold text-dark">{{ p.name }}</td>
-                                    <td>{{ p.email }}</td>
-                                    <td>{{ p.phone || 'N/A' }}</td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ p.name }}</div>
+                                        <span class="badge bg-secondary opacity-75" style="font-size: 0.7rem;">ID #{{ p.user_id }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-primary mb-0">{{ p.trek_name }}</div>
+                                        <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ p.trek_location }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="small"><i class="bi bi-envelope me-1 text-muted"></i>{{ p.email }}</div>
+                                        <div class="small text-muted" v-if="p.phone"><i class="bi bi-telephone me-1"></i>{{ p.phone }}</div>
+                                    </td>
                                     <td>{{ p.booking_date ? new Date(p.booking_date).toLocaleDateString() : 'N/A' }}</td>
-                                    <td><span class="badge bg-success">{{ p.status }}</span></td>
-                                    <td><span class="badge bg-info text-white">{{ p.payment_status }}</span></td>
+                                    <td>
+                                        <span class="badge" :class="bookingStatusBadge(p.status)">{{ p.status }}</span>
+                                    </td>
+                                    <td>
+                                        <button 
+                                            class="btn btn-sm py-1 px-2 rounded-pill fw-semibold"
+                                            :class="checkedInMap[p.booking_id] ? 'btn-success' : 'btn-outline-secondary'"
+                                            @click="toggleCheckIn(p.booking_id)"
+                                            :disabled="p.status === 'Cancelled'"
+                                        >
+                                            <i class="bi" :class="checkedInMap[p.booking_id] ? 'bi-check-circle-fill me-1' : 'bi-circle me-1'"></i>
+                                            {{ checkedInMap[p.booking_id] ? 'Checked In' : 'Not Checked In' }}
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button 
+                                                class="btn btn-outline-primary btn-sm" 
+                                                @click="openParticipantProfileModal(p)"
+                                                title="View Participant Profile"
+                                            >
+                                                <i class="bi bi-eye"></i> Details
+                                            </button>
+                                            <button 
+                                                v-if="p.status === 'Booked'"
+                                                class="btn btn-outline-danger btn-sm"
+                                                @click="cancelStaffBooking(p)"
+                                                title="Cancel Booking"
+                                            >
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                            <button 
+                                                v-if="p.status === 'Cancelled'"
+                                                class="btn btn-outline-success btn-sm"
+                                                @click="reactivateStaffBooking(p)"
+                                                title="Reactivate Booking"
+                                            >
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tbody>
                             <tbody v-else>
                                 <tr>
-                                    <td colspan="8" class="py-4 text-center text-muted">
-                                        <i class="bi bi-people fs-3 d-block mb-1 opacity-50"></i>
-                                        No participants registered for any of your assigned treks yet.
+                                    <td colspan="8" class="py-5 text-center text-muted">
+                                        <i class="bi bi-person-x fs-1 d-block mb-2 opacity-50"></i>
+                                        <h6 class="fw-bold mb-1">No Participants Found</h6>
+                                        <p class="small text-muted mb-0">No participant records match your current search or filter options.</p>
                                     </td>
                                 </tr>
                             </tbody>
@@ -534,14 +677,23 @@ const StaffDashboard = {
 
                         <!-- Participants Section -->
                         <hr class="my-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <h6 class="fw-bold mb-0 text-uppercase text-secondary small">
                                 <i class="bi bi-people-fill text-primary me-1"></i> Participants Registered ({{ detailTrek.participants_count }})
                             </h6>
+                            <div class="d-flex gap-2 align-items-center" v-if="detailTrek.participants && detailTrek.participants.length > 0">
+                                <div class="input-group input-group-sm" style="width: 220px;">
+                                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" placeholder="Search participant..." v-model="modalParticipantSearch">
+                                </div>
+                                <button class="btn btn-outline-success btn-sm text-nowrap" @click="exportParticipantsCSV(detailTrek.id)">
+                                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Participants Table -->
-                        <div class="table-responsive" v-if="detailTrek.participants && detailTrek.participants.length > 0">
+                        <div class="table-responsive" v-if="filteredDetailTrekParticipants && filteredDetailTrekParticipants.length > 0">
                             <table class="table table-hover align-middle border mb-0">
                                 <thead class="table-light">
                                     <tr>
@@ -550,19 +702,33 @@ const StaffDashboard = {
                                         <th>Email</th>
                                         <th>Phone</th>
                                         <th>Booking Date</th>
-                                        <th>Status</th>
-                                        <th>Payment</th>
+                                        <th>Check-in Status</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="(p, index) in detailTrek.participants" :key="p.booking_id">
+                                    <tr v-for="(p, index) in filteredDetailTrekParticipants" :key="p.booking_id">
                                         <td>{{ index + 1 }}</td>
                                         <td class="fw-semibold text-dark">{{ p.name }}</td>
                                         <td>{{ p.email }}</td>
                                         <td>{{ p.phone || 'N/A' }}</td>
                                         <td>{{ p.booking_date ? new Date(p.booking_date).toLocaleDateString() : 'N/A' }}</td>
-                                        <td><span class="badge bg-success">{{ p.status }}</span></td>
-                                        <td><span class="badge bg-info text-white">{{ p.payment_status }}</span></td>
+                                        <td>
+                                            <button 
+                                                class="btn btn-sm py-1 px-2 rounded-pill fw-semibold"
+                                                :class="checkedInMap[p.booking_id] ? 'btn-success' : 'btn-outline-secondary'"
+                                                @click="toggleCheckIn(p.booking_id)"
+                                                :disabled="p.status === 'Cancelled'"
+                                            >
+                                                <i class="bi" :class="checkedInMap[p.booking_id] ? 'bi-check-circle-fill me-1' : 'bi-circle me-1'"></i>
+                                                {{ checkedInMap[p.booking_id] ? 'Checked In' : 'Not Checked In' }}
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-outline-primary btn-sm" @click="openParticipantProfileModal({ ...p, trek_name: detailTrek.name })">
+                                                <i class="bi bi-eye"></i> Profile
+                                            </button>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -594,6 +760,86 @@ const StaffDashboard = {
                     </div>
                     <div class="modal-footer bg-light">
                         <button type="button" class="btn btn-secondary btn-sm" @click="closeDetailModal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Participant Profile Modal -->
+        <div v-if="showParticipantProfileModal && selectedParticipant" class="modal d-block bg-dark bg-opacity-50" tabindex="-1" style="z-index: 1060;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-person-bounding-box text-primary me-2"></i>Participant Profile
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" @click="showParticipantProfileModal = false"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="d-flex align-items-center mb-4 p-3 bg-light rounded border">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold fs-4" style="width: 54px; height: 54px;">
+                                {{ selectedParticipant.name ? selectedParticipant.name.charAt(0).toUpperCase() : 'P' }}
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-1 text-dark">{{ selectedParticipant.name }}</h5>
+                                <div class="text-muted small"><i class="bi bi-envelope me-1"></i>{{ selectedParticipant.email }}</div>
+                                <div class="text-muted small" v-if="selectedParticipant.phone"><i class="bi bi-telephone me-1"></i>{{ selectedParticipant.phone }}</div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <div class="p-3 bg-light rounded border">
+                                    <small class="text-muted d-block">Trek Assigned</small>
+                                    <strong class="text-primary">{{ selectedParticipant.trek_name }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 bg-light rounded border">
+                                    <small class="text-muted d-block">Booking Date</small>
+                                    <strong class="text-dark">{{ selectedParticipant.booking_date ? new Date(selectedParticipant.booking_date).toLocaleDateString() : 'N/A' }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 bg-light rounded border">
+                                    <small class="text-muted d-block">Booking Status</small>
+                                    <span class="badge mt-1" :class="bookingStatusBadge(selectedParticipant.status)">{{ selectedParticipant.status }}</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-3 bg-light rounded border">
+                                    <small class="text-muted d-block">Attendance / Check-in</small>
+                                    <button 
+                                        class="btn btn-sm mt-1 py-0 px-2 rounded-pill fw-semibold"
+                                        :class="checkedInMap[selectedParticipant.booking_id] ? 'btn-success' : 'btn-outline-secondary'"
+                                        @click="toggleCheckIn(selectedParticipant.booking_id)"
+                                        :disabled="selectedParticipant.status === 'Cancelled'"
+                                    >
+                                        <i class="bi" :class="checkedInMap[selectedParticipant.booking_id] ? 'bi-check-circle-fill me-1' : 'bi-circle me-1'"></i>
+                                        {{ checkedInMap[selectedParticipant.booking_id] ? 'Checked In' : 'Not Checked In' }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light d-flex justify-content-between">
+                        <button class="btn btn-secondary btn-sm" @click="showParticipantProfileModal = false">Close</button>
+                        <div class="d-flex gap-2">
+                            <button 
+                                v-if="selectedParticipant.status === 'Booked'"
+                                class="btn btn-danger btn-sm"
+                                @click="cancelStaffBooking(selectedParticipant); showParticipantProfileModal = false;"
+                            >
+                                <i class="bi bi-x-circle me-1"></i> Cancel Booking
+                            </button>
+                            <button 
+                                v-if="selectedParticipant.status === 'Cancelled'"
+                                class="btn btn-success btn-sm"
+                                @click="reactivateStaffBooking(selectedParticipant); showParticipantProfileModal = false;"
+                            >
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Reactivate Booking
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -659,7 +905,16 @@ const StaffDashboard = {
             bookingAlertType: 'alert-success',
             bookingActionInProgress: false,
             showErrorModal: false,
-            errorMessage: ''
+            errorMessage: '',
+            // Participant Management State
+            participantSearch: '',
+            participantTrekFilter: '',
+            participantStatusFilter: '',
+            participantCheckinFilter: '',
+            checkedInMap: {},
+            showParticipantProfileModal: false,
+            selectedParticipant: null,
+            modalParticipantSearch: ''
         }
     },
     computed: {
@@ -690,10 +945,51 @@ const StaffDashboard = {
             const list = [];
             this.assignedTreks.forEach(t => {
                 (t.participants || []).forEach(p => {
-                    list.push({ ...p, trek_name: t.name, trek_location: t.location });
+                    const isCheckedIn = !!this.checkedInMap[p.booking_id];
+                    list.push({ 
+                        ...p, 
+                        trek_name: t.name, 
+                        trek_id: t.id, 
+                        trek_location: t.location,
+                        checkin_status: isCheckedIn ? 'Checked In' : 'Not Checked In'
+                    });
                 });
             });
             return list;
+        },
+        filteredParticipants() {
+            return this.allParticipants.filter(p => {
+                const matchesSearch = !this.participantSearch ||
+                    (p.name && p.name.toLowerCase().includes(this.participantSearch.toLowerCase())) ||
+                    (p.email && p.email.toLowerCase().includes(this.participantSearch.toLowerCase())) ||
+                    (p.phone && p.phone.toLowerCase().includes(this.participantSearch.toLowerCase())) ||
+                    (p.trek_name && p.trek_name.toLowerCase().includes(this.participantSearch.toLowerCase()));
+
+                const matchesTrek = !this.participantTrekFilter || p.trek_id === parseInt(this.participantTrekFilter);
+                const matchesStatus = !this.participantStatusFilter || p.status === this.participantStatusFilter;
+                const matchesCheckin = !this.participantCheckinFilter || p.checkin_status === this.participantCheckinFilter;
+
+                return matchesSearch && matchesTrek && matchesStatus && matchesCheckin;
+            });
+        },
+        checkedInCount() {
+            return this.allParticipants.filter(p => p.checkin_status === 'Checked In').length;
+        },
+        pendingCheckinCount() {
+            return this.allParticipants.filter(p => p.status === 'Booked' && p.checkin_status !== 'Checked In').length;
+        },
+        cancelledParticipantsCount() {
+            return this.allParticipants.filter(p => p.status === 'Cancelled').length;
+        },
+        filteredDetailTrekParticipants() {
+            if (!this.detailTrek || !this.detailTrek.participants) return [];
+            if (!this.modalParticipantSearch) return this.detailTrek.participants;
+            const q = this.modalParticipantSearch.toLowerCase();
+            return this.detailTrek.participants.filter(p => 
+                (p.name && p.name.toLowerCase().includes(q)) ||
+                (p.email && p.email.toLowerCase().includes(q)) ||
+                (p.phone && p.phone.toLowerCase().includes(q))
+            );
         }
     },
     mounted() {
@@ -709,6 +1005,12 @@ const StaffDashboard = {
             } catch (e) {
                 console.error('Failed to parse stored user:', e);
             }
+        }
+        const storedCheckins = localStorage.getItem('staff_checkin_map');
+        if (storedCheckins) {
+            try {
+                this.checkedInMap = JSON.parse(storedCheckins);
+            } catch (e) {}
         }
     },
     methods: {
@@ -840,6 +1142,60 @@ const StaffDashboard = {
         handleLogout() {
             localStorage.removeItem('user');
             this.$router.push('/login');
+        },
+        toggleCheckIn(bookingId) {
+            const nextState = !this.checkedInMap[bookingId];
+            this.checkedInMap = { ...this.checkedInMap, [bookingId]: nextState };
+            localStorage.setItem('staff_checkin_map', JSON.stringify(this.checkedInMap));
+        },
+        markAllCheckedIn() {
+            if (this.filteredParticipants.length === 0) return;
+            const updated = { ...this.checkedInMap };
+            this.filteredParticipants.forEach(p => {
+                if (p.status !== 'Cancelled') {
+                    updated[p.booking_id] = true;
+                }
+            });
+            this.checkedInMap = updated;
+            localStorage.setItem('staff_checkin_map', JSON.stringify(this.checkedInMap));
+        },
+        openParticipantProfileModal(p) {
+            this.selectedParticipant = { ...p };
+            this.showParticipantProfileModal = true;
+        },
+        exportParticipantsCSV(specificTrekId = null) {
+            const listToExport = specificTrekId 
+                ? this.allParticipants.filter(p => p.trek_id === specificTrekId)
+                : this.filteredParticipants;
+
+            if (listToExport.length === 0) {
+                alert('No participant records to export.');
+                return;
+            }
+
+            const headers = ['Booking ID', 'Participant Name', 'Email', 'Phone', 'Trek Name', 'Booking Date', 'Booking Status', 'Payment Status', 'Check-In Status'];
+            const rows = listToExport.map(p => [
+                p.booking_id,
+                `"${p.name || ''}"`,
+                `"${p.email || ''}"`,
+                `"${p.phone || ''}"`,
+                `"${p.trek_name || ''}"`,
+                p.booking_date ? new Date(p.booking_date).toLocaleDateString() : 'N/A',
+                p.status,
+                p.payment_status,
+                p.checkin_status
+            ]);
+
+            const csvContent = 'data:text/csv;charset=utf-8,' 
+                + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `Trek_Participant_Manifest_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     }
 };
