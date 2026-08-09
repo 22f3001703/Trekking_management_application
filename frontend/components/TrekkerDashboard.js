@@ -320,62 +320,25 @@ const TrekkerDashboard = {
 
                 <!-- History Panel -->
                 <div v-else-if="activeTab === 'history'">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h5 class="fw-bold mb-0">Trekking History</h5>
-                            <small class="text-muted">View past completed treks and export booking records</small>
+                    <div class="card border-0 shadow-sm p-4 text-center my-4 mx-auto" style="max-width: 600px; border-radius: 12px;">
+                        <div class="mb-3">
+                            <i class="bi bi-file-earmark-spreadsheet text-success" style="font-size: 3.5rem;"></i>
                         </div>
-                        <div class="d-flex gap-2">
+                        <h4 class="fw-bold text-dark mb-2">Export All Your Booking History</h4>
+                        <p class="text-muted small mb-4">
+                            Generate and download a complete CSV report containing all your booking details, trek locations, dates, payment statuses, and history records.
+                        </p>
+                        <div>
                             <button 
-                                class="btn btn-success btn-sm" 
+                                class="btn btn-success px-4 py-2 fw-semibold shadow-sm" 
                                 @click="exportBookingHistory"
                                 :disabled="exportInProgress"
                             >
-                                <span v-if="exportInProgress" class="spinner-border spinner-border-sm me-1"></span>
-                                <i v-else class="bi bi-file-earmark-spreadsheet me-1"></i>
+                                <span v-if="exportInProgress" class="spinner-border spinner-border-sm me-2"></span>
+                                <i v-else class="bi bi-download me-2"></i>
                                 {{ exportInProgress ? exportStatusText : 'Export All Bookings (CSV)' }}
                             </button>
                         </div>
-                    </div>
-                    <p class="text-muted">View past completed treks and records.</p>
-                    <div class="table-responsive" v-if="completedBookings.length > 0">
-                        <table class="table table-hover align-middle border">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Trek</th>
-                                    <th>Location</th>
-                                    <th>Difficulty</th>
-                                    <th>Duration</th>
-                                    <th>Price</th>
-                                    <th>Trek Dates</th>
-                                    <th>Booked On</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="(b, index) in completedBookings" :key="b.id">
-                                    <td>{{ index + 1 }}</td>
-                                    <td class="fw-semibold text-dark">{{ b.trek_name }}</td>
-                                    <td>{{ b.location }}</td>
-                                    <td><span class="badge" :class="difficultyBadge(b.difficulty)">{{ b.difficulty }}</span></td>
-                                    <td>{{ b.duration_days }} days</td>
-                                    <td class="fw-semibold text-success">₹{{ b.price }}</td>
-                                    <td>
-                                        <span v-if="b.start_date">{{ new Date(b.start_date).toLocaleDateString() }}</span>
-                                        <span v-if="b.start_date && b.end_date"> - </span>
-                                        <span v-if="b.end_date">{{ new Date(b.end_date).toLocaleDateString() }}</span>
-                                        <span v-if="!b.start_date && !b.end_date" class="text-muted">N/A</span>
-                                    </td>
-                                    <td>{{ b.booking_date ? new Date(b.booking_date).toLocaleDateString() : 'N/A' }}</td>
-                                    <td><span class="badge bg-info text-white">Completed</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div v-else class="text-center py-5 text-muted border rounded">
-                        <i class="bi bi-clock-history fs-1 mb-2 d-block text-secondary"></i>
-                        <p class="mb-0">No past completed treks recorded yet.</p>
                     </div>
                 </div>
 
@@ -586,10 +549,10 @@ const TrekkerDashboard = {
         },
         filteredTreks() {
             return this.treks.filter(t => {
-                const matchesSearch = !this.searchQuery || 
+                const matchesSearch = !this.searchQuery ||
                     (t.name && t.name.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
                     (t.location && t.location.toLowerCase().includes(this.searchQuery.toLowerCase()));
-                
+
                 const matchesDifficulty = !this.filterDifficulty || t.difficulty === this.filterDifficulty;
                 const matchesStatus = !this.filterStatus || t.status === this.filterStatus;
 
