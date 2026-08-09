@@ -344,20 +344,102 @@ const TrekkerDashboard = {
 
                 <!-- Profile Panel -->
                 <div v-else-if="activeTab === 'profile'">
-                    <h5 class="fw-bold mb-3">My Profile</h5>
-                    <div class="card border-0 bg-light p-3" style="max-width: 500px;">
-                        <div class="mb-3">
-                            <label class="form-label text-muted small">Name</label>
-                            <div class="fw-bold text-dark">{{ userName }}</div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0">My Profile</h5>
+                            <small class="text-muted">Manage your personal account details</small>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small">Email</label>
-                            <div class="fw-bold text-dark">{{ userEmail }}</div>
+                        <button 
+                            v-if="!isEditingProfile" 
+                            class="btn btn-outline-primary btn-sm" 
+                            @click="startEditProfile"
+                        >
+                            <i class="bi bi-pencil-square me-1"></i> Edit Profile
+                        </button>
+                    </div>
+
+                    <div v-if="profileAlert" class="alert alert-dismissible fade show py-2 px-3 mb-3 small" :class="profileAlertType" role="alert" style="max-width: 600px;">
+                        <i class="bi me-1" :class="profileAlertType === 'alert-success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+                        {{ profileAlert }}
+                        <button type="button" class="btn-close py-2" @click="profileAlert = ''"></button>
+                    </div>
+
+                    <!-- View Profile Mode -->
+                    <div v-if="!isEditingProfile" class="card border-0 shadow-sm p-4" style="max-width: 600px; border-radius: 12px;">
+                        <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 fw-bold fs-4 shadow-sm" style="width: 54px; height: 54px;">
+                                {{ userName ? userName.charAt(0).toUpperCase() : 'T' }}
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-0 text-dark">{{ userName }}</h5>
+                                <span class="badge bg-success mt-1">Trekker Account</span>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label text-muted small">Role</label>
-                            <div><span class="badge bg-success">Trekker Account</span></div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light rounded border">
+                                    <div class="text-muted small mb-1"><i class="bi bi-person me-1"></i>Full Name</div>
+                                    <div class="fw-bold text-dark">{{ userName }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light rounded border">
+                                    <div class="text-muted small mb-1"><i class="bi bi-envelope me-1"></i>Email Address</div>
+                                    <div class="fw-bold text-dark">{{ userEmail }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light rounded border">
+                                    <div class="text-muted small mb-1"><i class="bi bi-telephone me-1"></i>Phone Number</div>
+                                    <div class="fw-bold text-dark">{{ userPhone || 'Not provided' }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light rounded border">
+                                    <div class="text-muted small mb-1"><i class="bi bi-shield-check me-1"></i>Account Status</div>
+                                    <div class="fw-bold text-success"><i class="bi bi-check-circle-fill me-1"></i>Active</div>
+                                </div>
+                            </div>
                         </div>
+
+                        <div class="mt-4 pt-3 border-top text-end">
+                            <button class="btn btn-primary btn-sm px-4" @click="startEditProfile">
+                                <i class="bi bi-pencil me-1"></i> Edit Profile Details
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Edit Profile Mode -->
+                    <div v-else class="card border-0 shadow-sm p-4" style="max-width: 600px; border-radius: 12px;">
+                        <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-pencil-square me-2"></i>Update Account Information</h6>
+                        <form @submit.prevent="submitProfileUpdate">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold small">Full Name *</label>
+                                    <input type="text" class="form-control" v-model="profileForm.name" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold small">Email Address *</label>
+                                    <input type="email" class="form-control" v-model="profileForm.email" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold small">Phone Number</label>
+                                    <input type="tel" class="form-control" v-model="profileForm.phone" placeholder="+91 9876543210">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold small">New Password (leave blank to keep current)</label>
+                                    <input type="password" class="form-control" v-model="profileForm.password" placeholder="••••••••">
+                                </div>
+                            </div>
+                            <div class="mt-4 text-end">
+                                <button type="button" class="btn btn-secondary btn-sm me-2 px-3" @click="cancelEditProfile">Cancel</button>
+                                <button type="submit" class="btn btn-primary btn-sm px-4" :disabled="savingProfile">
+                                    <span v-if="savingProfile" class="spinner-border spinner-border-sm me-1"></span>
+                                    <i v-else class="bi bi-check-lg me-1"></i> Save Changes
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -536,7 +618,19 @@ const TrekkerDashboard = {
             exportInProgress: false,
             exportTaskId: null,
             exportStatusText: 'Processing...',
-            exportPollTimer: null
+            exportPollTimer: null,
+            // Profile Edit State
+            userPhone: '',
+            isEditingProfile: false,
+            savingProfile: false,
+            profileAlert: '',
+            profileAlertType: 'alert-success',
+            profileForm: {
+                name: '',
+                email: '',
+                phone: '',
+                password: ''
+            }
         }
     },
     computed: {
@@ -573,6 +667,7 @@ const TrekkerDashboard = {
                 const user = JSON.parse(storedUser);
                 this.userName = user.name || 'Trekker';
                 this.userEmail = user.email || '';
+                this.userPhone = user.phone || '';
                 this.userId = user.id;
             } catch (e) {
                 console.error('Failed to parse stored user:', e);
@@ -779,6 +874,62 @@ const TrekkerDashboard = {
                     this.showErrorModal = true;
                 }
             }, 2000);
+        },
+        startEditProfile() {
+            this.profileAlert = '';
+            this.profileForm = {
+                name: this.userName,
+                email: this.userEmail,
+                phone: this.userPhone,
+                password: ''
+            };
+            this.isEditingProfile = true;
+        },
+        cancelEditProfile() {
+            this.isEditingProfile = false;
+            this.profileAlert = '';
+        },
+        async submitProfileUpdate() {
+            if (!this.userId) return;
+            this.savingProfile = true;
+            this.profileAlert = '';
+            try {
+                const res = await fetch(`/api/users/${this.userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.profileForm)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    this.userName = data.user.name;
+                    this.userEmail = data.user.email;
+                    this.userPhone = data.user.phone || '';
+
+                    // Update localStorage user object
+                    const storedUser = localStorage.getItem('user');
+                    if (storedUser) {
+                        try {
+                            const u = JSON.parse(storedUser);
+                            u.name = data.user.name;
+                            u.email = data.user.email;
+                            u.phone = data.user.phone;
+                            localStorage.setItem('user', JSON.stringify(u));
+                        } catch (e) {}
+                    }
+
+                    this.profileAlert = 'Profile details updated successfully!';
+                    this.profileAlertType = 'alert-success';
+                    this.isEditingProfile = false;
+                } else {
+                    this.profileAlert = data.error || 'Failed to update profile.';
+                    this.profileAlertType = 'alert-danger';
+                }
+            } catch (err) {
+                this.profileAlert = 'Server error updating profile.';
+                this.profileAlertType = 'alert-danger';
+            } finally {
+                this.savingProfile = false;
+            }
         }
     }
 };

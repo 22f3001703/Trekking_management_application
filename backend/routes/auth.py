@@ -78,6 +78,40 @@ def get_users():
     return jsonify(result), 200
 
 
+# ---------- PUT /api/users/<int:user_id> ----------
+@auth_bp.route('/users/<int:user_id>', methods=['PUT'])
+def update_user_profile(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.get_json() or {}
+
+    if 'name' in data and data['name'].strip():
+        user.name = data['name'].strip()
+
+    if 'email' in data and data['email'].strip():
+        new_email = data['email'].strip()
+        if new_email != user.email:
+            existing = User.query.filter_by(email=new_email).first()
+            if existing:
+                return jsonify({'error': 'Email is already taken by another account'}), 409
+            user.email = new_email
+
+    if 'phone' in data:
+        user.phone = data['phone'].strip() if data['phone'] else None
+
+    if 'password' in data and data['password'].strip():
+        user.password = generate_password_hash(data['password'].strip())
+
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Profile updated successfully',
+        'user': user.to_dict()
+    }), 200
+
+
 # ---------- PUT /api/users/<int:user_id>/status ----------
 @auth_bp.route('/users/<int:user_id>/status', methods=['PUT'])
 def update_user_status(user_id):
