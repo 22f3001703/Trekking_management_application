@@ -202,3 +202,21 @@ Prevent duplicate bookings for same trek
 Maintain complete trekking history per user
 Allow searching and filtering of treks
 Allow admin to view all historical trekking data
+
+
+
+
+
+
+
+
+
+
+#!/bin/bash
+# 1. Start Celery Worker in background
+celery -A celery_app.celery worker --loglevel=info &
+
+# 2. Start Celery Beat Scheduler in background
+celery -A celery_app.celery beat --loglevel=info &
+
+
