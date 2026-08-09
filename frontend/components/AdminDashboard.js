@@ -1284,12 +1284,10 @@ const AdminDashboard = {
             allBookings: [],
             bookingSearch: '',
             bookingStatusFilter: '',
-            // Search System State
             globalSearchQuery: '',
             searchCategoryFilter: 'all',
             searchApiResults: null,
             isSearching: false,
-            // In-tab Quick Filters
             myTrekSearch: '',
             staffSearch: '',
             userSearch: '',

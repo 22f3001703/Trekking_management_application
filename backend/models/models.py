@@ -1,10 +1,7 @@
 from database import db
 import datetime
-
-
 class User(db.Model):
     __tablename__ = 'user'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -14,11 +11,8 @@ class User(db.Model):
     phone = db.Column(db.String(15), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-
-    # Relationships
     bookings = db.relationship('Booking', backref='user', lazy=True)
     staff_profile = db.relationship('StaffProfile', backref='user', uselist=False, lazy=True)
-
     def to_dict(self):
         return {
             'id': self.id,
@@ -30,11 +24,8 @@ class User(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
-
-
 class Trek(db.Model):
     __tablename__ = 'trek'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     location = db.Column(db.String(200), nullable=False)
@@ -50,11 +41,8 @@ class Trek(db.Model):
     assigned_staff_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-
-    # Relationships
     assigned_staff = db.relationship('User', backref='assigned_treks', foreign_keys=[assigned_staff_id])
     bookings = db.relationship('Booking', backref='trek', lazy=True)
-
     def to_dict(self):
         return {
             'id': self.id,
@@ -73,11 +61,8 @@ class Trek(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
-
-
 class Booking(db.Model):
     __tablename__ = 'booking'
-
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     trek_id = db.Column(db.Integer, db.ForeignKey('trek.id'), nullable=False)
@@ -86,12 +71,9 @@ class Booking(db.Model):
     payment_status = db.Column(db.String(20), nullable=True, default='Pending')  
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-
-
     __table_args__ = (
         db.UniqueConstraint('user_id', 'trek_id', name='uq_user_trek'),
     )
-
     def to_dict(self):
         return {
             'id': self.id,
@@ -103,12 +85,8 @@ class Booking(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
-
-
-
 class StaffProfile(db.Model):
     __tablename__ = 'staff_profile'
-
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
     specialization = db.Column(db.String(150), nullable=True)
@@ -118,7 +96,6 @@ class StaffProfile(db.Model):
     status = db.Column(db.String(20), nullable=False, default='Active')
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
-
     def to_dict(self):
         return {
             'id': self.id,

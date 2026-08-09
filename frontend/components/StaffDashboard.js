@@ -1075,7 +1075,6 @@ const StaffDashboard = {
             bookingActionInProgress: false,
             showErrorModal: false,
             errorMessage: '',
-            // Participant Management State
             participantSearch: '',
             participantTrekFilter: '',
             participantStatusFilter: '',
@@ -1084,7 +1083,6 @@ const StaffDashboard = {
             showParticipantProfileModal: false,
             selectedParticipant: null,
             modalParticipantSearch: '',
-            // Edit Trek Modal State
             showEditTrekModal: false,
             savingTrekEdit: false,
             editTrekFormError: '',

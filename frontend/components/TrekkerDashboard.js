@@ -614,12 +614,10 @@ const TrekkerDashboard = {
             alertType: 'alert-success',
             showErrorModal: false,
             errorMessage: '',
-            // CSV Export State
             exportInProgress: false,
             exportTaskId: null,
             exportStatusText: 'Processing...',
             exportPollTimer: null,
-            // Profile Edit State
             userPhone: '',
             isEditingProfile: false,
             savingProfile: false,
@@ -845,7 +843,6 @@ const TrekkerDashboard = {
                         this.exportPollTimer = null;
                         this.exportStatusText = 'Download ready!';
 
-                        // Trigger file download
                         const link = document.createElement('a');
                         link.href = `/api/export/download/${data.result.filename}`;
                         link.setAttribute('download', data.result.filename);
@@ -905,7 +902,6 @@ const TrekkerDashboard = {
                     this.userEmail = data.user.email;
                     this.userPhone = data.user.phone || '';
 
-                    // Update localStorage user object
                     const storedUser = localStorage.getItem('user');
                     if (storedUser) {
                         try {

@@ -2,21 +2,14 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 from database import db
 from models.models import Trek, User, Booking
-
 trek_bp = Blueprint('trek', __name__, url_prefix='/api')
-
-
 def _clear_trek_cache():
-    """Invalidate Redis cache for trek endpoints."""
     try:
         from extensions import cache
         cache.delete('all_treks')
         cache.delete_memoized(get_single_trek)
     except Exception:
         pass
-
-
-# ---------- GET /api/staff-list ----------
 @trek_bp.route('/staff-list', methods=['GET'])
 def get_staff_list():
     staff_members = User.query.filter_by(role='staff', status=1).all()
@@ -28,17 +21,12 @@ def get_staff_list():
         }
         for s in staff_members
     ]), 200
-
-
-# ---------- GET /api/treks ----------
 @trek_bp.route('/treks', methods=['GET'])
 def get_treks():
     from extensions import cache
-    # Try to get from cache first
     cached = cache.get('all_treks')
     if cached is not None:
         return jsonify(cached), 200
-
     treks = Trek.query.order_by(Trek.created_at.desc()).all()
     result = []
     for t in treks:
@@ -48,12 +36,8 @@ def get_treks():
         else:
             t_dict['assigned_staff_name'] = 'Unassigned'
         result.append(t_dict)
-
-    cache.set('all_treks', result, timeout=300)  # Cache for 5 minutes
+    cache.set('all_treks', result, timeout=300)                       
     return jsonify(result), 200
-
-
-# ---------- GET /api/treks/<id> ----------
 @trek_bp.route('/treks/<int:trek_id>', methods=['GET'])
 def get_single_trek(trek_id):
     from extensions import cache
@@ -61,30 +45,22 @@ def get_single_trek(trek_id):
     cached = cache.get(cache_key)
     if cached is not None:
         return jsonify(cached), 200
-
     trek = Trek.query.get(trek_id)
     if not trek:
         return jsonify({'error': 'Trek not found'}), 404
     t_dict = trek.to_dict()
     t_dict['assigned_staff_name'] = trek.assigned_staff.name if trek.assigned_staff else 'Unassigned'
-
     cache.set(cache_key, t_dict, timeout=300)
     return jsonify(t_dict), 200
-
-
-# ---------- POST /api/treks ----------
 @trek_bp.route('/treks', methods=['POST'])
 def create_trek():
     data = request.get_json() or {}
-
     name = data.get('name', '').strip()
     location = data.get('location', '').strip()
     duration_days = data.get('duration_days')
     available_slots = data.get('available_slots')
-
     if not name or not location or duration_days is None or available_slots is None:
         return jsonify({'error': 'Name, location, duration_days, and available_slots are required'}), 400
-
     try:
         duration_days = int(duration_days)
         available_slots = int(available_slots)
@@ -92,18 +68,15 @@ def create_trek():
             raise ValueError()
     except (ValueError, TypeError):
         return jsonify({'error': 'duration_days must be > 0 and available_slots must be >= 0'}), 400
-
     difficulty = data.get('difficulty', 'Moderate').strip()
     price = data.get('price', 0.0)
     try:
         price = float(price) if price else 0.0
     except (ValueError, TypeError):
         price = 0.0
-
     description = data.get('description', '').strip()
     image = data.get('image', '').strip()
     status = data.get('status', 'Open').strip()
-
     start_date = None
     end_date = None
     if data.get('start_date'):
@@ -111,13 +84,11 @@ def create_trek():
             start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d').date()
         except ValueError:
             return jsonify({'error': 'Invalid start_date format (expected YYYY-MM-DD)'}), 400
-
     if data.get('end_date'):
         try:
             end_date = datetime.strptime(data.get('end_date'), '%Y-%m-%d').date()
         except ValueError:
             return jsonify({'error': 'Invalid end_date format (expected YYYY-MM-DD)'}), 400
-
     assigned_staff_id = data.get('assigned_staff_id')
     if assigned_staff_id:
         try:
@@ -129,7 +100,6 @@ def create_trek():
             assigned_staff_id = None
     else:
         assigned_staff_id = None
-
     new_trek = Trek(
         name=name,
         location=location,
@@ -144,31 +114,22 @@ def create_trek():
         end_date=end_date,
         assigned_staff_id=assigned_staff_id
     )
-
     db.session.add(new_trek)
     db.session.commit()
     _clear_trek_cache()
-
     res_dict = new_trek.to_dict()
     if new_trek.assigned_staff:
         res_dict['assigned_staff_name'] = new_trek.assigned_staff.name
-
     return jsonify({
         'message': 'Trek created successfully',
         'trek': res_dict
     }), 201
-
-
-# ---------- PUT /api/treks/<id> ----------
 @trek_bp.route('/treks/<int:trek_id>', methods=['PUT'])
 def update_trek(trek_id):
     trek = Trek.query.get(trek_id)
     if not trek:
         return jsonify({'error': 'Trek not found'}), 404
-
     data = request.get_json() or {}
-
-    # If request is sent from staff, verify they are assigned to this trek
     requester_staff_id = request.args.get('staff_id') or data.get('staff_id')
     if requester_staff_id:
         try:
@@ -177,43 +138,33 @@ def update_trek(trek_id):
                 return jsonify({'error': 'Unauthorized. You are not assigned to manage this trek.'}), 403
         except (ValueError, TypeError):
             pass
-
     if 'name' in data and data['name'].strip():
         trek.name = data['name'].strip()
-
     if 'location' in data and data['location'].strip():
         trek.location = data['location'].strip()
-
     if 'difficulty' in data:
         trek.difficulty = data['difficulty'].strip()
-
     if 'duration_days' in data:
         try:
             trek.duration_days = int(data['duration_days'])
         except (ValueError, TypeError):
             pass
-
     if 'available_slots' in data:
         try:
             trek.available_slots = int(data['available_slots'])
         except (ValueError, TypeError):
             pass
-
     if 'price' in data:
         try:
             trek.price = float(data['price'])
         except (ValueError, TypeError):
             pass
-
     if 'description' in data:
         trek.description = data['description'].strip()
-
     if 'image' in data:
         trek.image = data['image'].strip()
-
     if 'status' in data:
         trek.status = data['status'].strip()
-
     if 'start_date' in data:
         if data['start_date']:
             try:
@@ -222,7 +173,6 @@ def update_trek(trek_id):
                 pass
         else:
             trek.start_date = None
-
     if 'end_date' in data:
         if data['end_date']:
             try:
@@ -231,7 +181,6 @@ def update_trek(trek_id):
                 pass
         else:
             trek.end_date = None
-
     if 'assigned_staff_id' in data:
         staff_id = data['assigned_staff_id']
         if staff_id:
@@ -246,31 +195,21 @@ def update_trek(trek_id):
                 trek.assigned_staff_id = None
         else:
             trek.assigned_staff_id = None
-
     db.session.commit()
     _clear_trek_cache()
-
     res_dict = trek.to_dict()
     res_dict['assigned_staff_name'] = trek.assigned_staff.name if trek.assigned_staff else 'Unassigned'
-
     return jsonify({
         'message': 'Trek updated successfully',
         'trek': res_dict
     }), 200
-
-
-# ---------- DELETE /api/treks/<id> ----------
 @trek_bp.route('/treks/<int:trek_id>', methods=['DELETE'])
 def delete_trek(trek_id):
     trek = Trek.query.get(trek_id)
     if not trek:
         return jsonify({'error': 'Trek not found'}), 404
-
-    # Delete any related bookings first to avoid foreign key constraints
     Booking.query.filter_by(trek_id=trek_id).delete()
-
     db.session.delete(trek)
     db.session.commit()
     _clear_trek_cache()
-
     return jsonify({'message': f'Trek "{trek.name}" deleted successfully'}), 200

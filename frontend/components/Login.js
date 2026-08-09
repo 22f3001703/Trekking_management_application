@@ -109,7 +109,6 @@ const Login = {
                 if (res.ok) {
                     localStorage.setItem('user', JSON.stringify(data.user));
                     
-                    // Redirect based on user role
                     if (data.user.role === 'admin') {
                         this.$router.push('/admin/dashboard');
                     } else if (data.user.role === 'staff') {

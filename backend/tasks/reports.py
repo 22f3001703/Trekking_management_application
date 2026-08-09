@@ -1,57 +1,36 @@
-"""
-Scheduled Job (b) – Monthly Activity Report
-Generates an HTML activity report and sends it to all admin users on the 1st of every month.
-Runs at 9:00 AM IST via Celery Beat.
-"""
-
+\
+\
+\
+\
 import datetime
 from celery_app import celery
-
-
 @celery.task(name='tasks.reports.send_monthly_report')
 def send_monthly_report():
-    """Generate and email monthly trekking activity report to admin users."""
     from database import db
     from models.models import User, Trek, Booking
     from flask_mail import Message
     from sqlalchemy import func
     from extensions import mail
-
     today = datetime.date.today()
-    # Report covers the previous month
     first_of_current = today.replace(day=1)
     last_of_prev = first_of_current - datetime.timedelta(days=1)
     first_of_prev = last_of_prev.replace(day=1)
-
     month_name = last_of_prev.strftime('%B %Y')
-
-    # --- Gather statistics ---
-
-    # 1. Treks conducted (completed during the previous month)
     treks_completed = Trek.query.filter(
         Trek.status == 'Completed',
         Trek.end_date >= first_of_prev,
         Trek.end_date <= last_of_prev
     ).count()
-
-    # Total treks in system
     total_treks = Trek.query.count()
-
-    # 2. Bookings in previous month
     bookings_in_month = Booking.query.filter(
         Booking.booking_date >= datetime.datetime.combine(first_of_prev, datetime.time.min),
         Booking.booking_date <= datetime.datetime.combine(last_of_prev, datetime.time.max)
     ).all()
-
     total_bookings = len(bookings_in_month)
     booked_count = sum(1 for b in bookings_in_month if b.status == 'Booked')
     cancelled_count = sum(1 for b in bookings_in_month if b.status == 'Cancelled')
     completed_count = sum(1 for b in bookings_in_month if b.status == 'Completed')
-
-    # 3. Unique participating users
     unique_users = len(set(b.user_id for b in bookings_in_month if b.status in ('Booked', 'Completed')))
-
-    # 4. Popular treks (by booking count, top 5)
     popular_treks_data = db.session.query(
         Trek.name,
         Trek.location,
@@ -61,8 +40,6 @@ def send_monthly_report():
         Booking.booking_date >= datetime.datetime.combine(first_of_prev, datetime.time.min),
         Booking.booking_date <= datetime.datetime.combine(last_of_prev, datetime.time.max)
     ).group_by(Trek.id).order_by(func.count(Booking.id).desc()).limit(5).all()
-
-    # 5. Revenue estimate
     revenue_data = db.session.query(
         func.sum(Trek.price)
     ).join(Booking, Booking.trek_id == Trek.id).filter(
@@ -70,11 +47,7 @@ def send_monthly_report():
         Booking.booking_date <= datetime.datetime.combine(last_of_prev, datetime.time.max),
         Booking.status.in_(['Booked', 'Completed'])
     ).scalar() or 0
-
-    # 6. Total registered users
     total_users = User.query.filter_by(role='trekker').count()
-
-    # --- Build popular treks HTML table rows ---
     popular_rows = ''
     for i, pt in enumerate(popular_treks_data, 1):
         difficulty_color = '#28a745' if pt.difficulty == 'Easy' else '#ffc107' if pt.difficulty == 'Moderate' else '#dc3545'
@@ -87,13 +60,9 @@ def send_monthly_report():
             <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold;">{pt.booking_count}</td>
         </tr>
         """
-
     if not popular_rows:
         popular_rows = '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #999;">No booking data for this period.</td></tr>'
-
-    # --- Build HTML email ---
     subject = f"📊 Monthly Trekking Activity Report — {month_name}"
-
     html_body = f"""
     <html>
     <body style="font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f6f9; padding: 30px; margin: 0;">
@@ -132,7 +101,6 @@ def send_monthly_report():
                         </td>
                     </tr>
                 </table>
-
                 <h3 style="color: #333; border-bottom: 2px solid #1a237e; padding-bottom: 8px; margin-bottom: 15px;">Booking Breakdown</h3>
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px;">
                     <tr style="background: #f8f9fa;"><td style="padding: 10px 15px;">Active Bookings</td><td style="padding: 10px 15px; text-align: right; font-weight: bold; color: #2e7d32;">{booked_count}</td></tr>
@@ -141,7 +109,6 @@ def send_monthly_report():
                     <tr><td style="padding: 10px 15px;">Total Registered Trekkers</td><td style="padding: 10px 15px; text-align: right; font-weight: bold;">{total_users}</td></tr>
                     <tr style="background: #f8f9fa;"><td style="padding: 10px 15px;">Total Treks in System</td><td style="padding: 10px 15px; text-align: right; font-weight: bold;">{total_treks}</td></tr>
                 </table>
-
                 <h3 style="color: #333; border-bottom: 2px solid #1a237e; padding-bottom: 8px; margin-bottom: 15px;">🔥 Most Popular Treks</h3>
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px;">
                     <thead>
@@ -157,7 +124,6 @@ def send_monthly_report():
                         {popular_rows}
                     </tbody>
                 </table>
-
                 <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">
                     This report was auto-generated on {today.strftime('%d %B %Y')} by the Trekking Management System.
                 </p>
@@ -169,11 +135,8 @@ def send_monthly_report():
     </body>
     </html>
     """
-
-    # Send to all admin users
     admins = User.query.filter_by(role='admin').all()
     emails_sent = 0
-
     for admin in admins:
         if not admin.email:
             continue
@@ -189,7 +152,6 @@ def send_monthly_report():
             emails_sent += 1
         except Exception as e:
             print(f"Failed to send monthly report to {admin.email}: {e}")
-
     return {
         'status': 'completed',
         'month': month_name,
